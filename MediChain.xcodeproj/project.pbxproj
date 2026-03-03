@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		55944DB72F56B7370067AB4A /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 55944DB62F56B7370067AB4A /* FirebaseAuth */; };
+		55944DB92F56B7370067AB4A /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 55944DB82F56B7370067AB4A /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		55944D972F56B3130067AB4A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				55944DB72F56B7370067AB4A /* FirebaseAuth in Frameworks */,
+				55944DB92F56B7370067AB4A /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = MediChain;
 			packageProductDependencies = (
+				55944DB62F56B7370067AB4A /* FirebaseAuth */,
+				55944DB82F56B7370067AB4A /* FirebaseFirestore */,
 			);
 			productName = MediChain;
 			productReference = 55944D892F56B3110067AB4A /* MediChain.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = 55944D802F56B3110067AB4A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				55944DB52F56B7360067AB4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 55944D8A2F56B3110067AB4A /* Products */;
 			projectDirPath = "";
@@ -570,6 +582,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		55944DB52F56B7360067AB4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		55944DB62F56B7370067AB4A /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 55944DB52F56B7360067AB4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		55944DB82F56B7370067AB4A /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 55944DB52F56B7360067AB4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 55944D812F56B3110067AB4A /* Project object */;
 }
