@@ -12,27 +12,34 @@ struct BookingView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedDate = Date()
-    @State private var selectedDoctorId: String?
+    @State private var selectedDoctor: MediUser?
     @State private var notes = ""
     
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Select Date & Time")) {
-                    DatePicker("Appointment", selection: $selectedDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                Section(header: Text("Select Visit Date")) {
+                    DatePicker("Appointment Date", selection: $selectedDate, in: Date()..., displayedComponents: .date)
+                        .onChange(of: selectedDate) { newDate in
+                            // FAIL-SAFE: Clear the selected doctor if the date changes
+                            selectedDoctor = nil
+                            
+                            authViewModel.fetchAvailableDoctors(for: newDate)
+                        }
+                        // THE FIX: Lock the date picker if a doctor is currently selected
+                        .disabled(selectedDoctor != nil)
                 }
                 
                 Section(header: Text("Select Available Doctor")) {
-                    if authViewModel.allDoctors.isEmpty {
-                        Text("No doctors available.")
+                    if authViewModel.availableDoctors.isEmpty {
+                        Text("No doctors available for this date.")
                             .foregroundColor(.gray)
                     } else {
-                        Picker("Doctor", selection: $selectedDoctorId) {
-                            Text("Select a Doctor").tag(String?.none)
-                            ForEach(authViewModel.allDoctors) { doctor in
-                                // Shows the doctor's email as a name for now
+                        Picker("Doctor", selection: $selectedDoctor) {
+                            Text("Select a Doctor").tag(nil as MediUser?)
+                            ForEach(authViewModel.availableDoctors, id: \.self) { doctor in
                                 Text(doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor")
-                                    .tag(String?.some(doctor.uid))
+                                    .tag(doctor as MediUser?)
                             }
                         }
                     }
@@ -43,23 +50,29 @@ struct BookingView: View {
                 }
                 
                 Button(action: {
-                    if let docId = selectedDoctorId {
-                        authViewModel.scheduleAppointment(doctorId: docId, date: selectedDate, notes: notes)
+                    if let doctor = selectedDoctor {
+                        let docName = doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor"
+                        
+                        let start = doctor.dutyStart ?? "7:00 PM"
+                        let end = doctor.dutyEnd ?? "9:00 PM"
+                        let slot = "\(start) - \(end)"
+                        
+                        authViewModel.scheduleAppointment(doctorId: doctor.uid, doctorName: docName, timeSlot: slot, date: selectedDate, notes: notes)
                         dismiss()
                     }
                 }) {
                     Text("Confirm Appointment")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(selectedDoctorId == nil ? Color.gray : Color.blue)
+                        .background(selectedDoctor == nil ? Color.gray : Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
-                .disabled(selectedDoctorId == nil)
+                .disabled(selectedDoctor == nil)
             }
             .navigationTitle("Request Appointment")
             .onAppear {
-                authViewModel.fetchAllDoctors() // Fetch the list when the view opens
+                authViewModel.fetchAvailableDoctors(for: selectedDate)
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

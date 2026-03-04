@@ -7,15 +7,20 @@
 
 import Foundation
 
-// Phase 1 Mehedi: Logic to distinguish between Doctors and Patients
+// Logic to distinguish between Doctors and Patients
 enum UserRole: String, Codable {
     case doctor = "Doctor"
     case patient = "Patient"
 }
 
-struct MediUser: Codable, Identifiable {
+struct MediUser: Codable, Identifiable, Hashable { // Added Hashable for Picker support
     var id: String { uid }
     let uid: String
     let email: String
-    let role: UserRole // This drives the Dual-Portal Access
+    let role: UserRole
+    
+    // New Fields for Doctor Capacity
+    var dutyStart: String?
+    var dutyEnd: String?
+    var dailyLimit: Int?
 }
