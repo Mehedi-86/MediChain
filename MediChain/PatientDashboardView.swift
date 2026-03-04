@@ -13,7 +13,6 @@ struct PatientDashboardView: View {
     
     var body: some View {
         NavigationView {
-            // THE FIX: Using a ZStack to handle the background safely
             ZStack {
                 Color(UIColor.systemGroupedBackground)
                     .ignoresSafeArea()
@@ -33,7 +32,8 @@ struct PatientDashboardView: View {
                                 Text("Welcome back,")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                Text(authViewModel.currentUser?.fullName ?? "Patient")
+                                // Smart fallback here as well
+                                Text(authViewModel.currentUser?.fullName ?? authViewModel.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Patient")
                                     .font(.title2)
                                     .fontWeight(.bold)
                             }
@@ -107,7 +107,8 @@ struct PatientDashboardView: View {
                     .padding(.bottom, 30)
                 }
             }
-            .navigationTitle("Patient Portal") // Properly positioned!
+            .navigationTitle("Patient Portal")
+            .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 authViewModel.fetchPatientAppointments()
             }
@@ -125,6 +126,8 @@ struct PatientDashboardView: View {
                 }
             }
         }
+        // Prevents Nav Bar disappearing bug
+        .navigationViewStyle(.stack)
     }
 }
 

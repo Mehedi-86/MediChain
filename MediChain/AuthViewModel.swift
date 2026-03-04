@@ -164,38 +164,39 @@ class AuthViewModel: ObservableObject {
     }
 
     // MARK: - Appointment Logic (Booking & Canceling)
-    
-    func scheduleAppointment(doctorId: String, doctorName: String, timeSlot: String, date: Date, notes: String) {
-        guard let patientId = currentUser?.uid else { return }
-        let dateString = formatDate(date)
-        let availabilityRef = db.collection("availability").document("\(doctorId)_\(dateString)")
         
-        db.runTransaction({ (transaction, errorPointer) -> Any? in
-            let availDoc: DocumentSnapshot
-            do { try availDoc = transaction.getDocument(availabilityRef) }
-            catch { return nil }
+        func scheduleAppointment(doctorId: String, doctorName: String, timeSlot: String, date: Date, notes: String) {
+            guard let patientId = currentUser?.uid else { return }
+            let dateString = formatDate(date)
+            let availabilityRef = db.collection("availability").document("\(doctorId)_\(dateString)")
             
-            let currentCount = availDoc.data()?["currentPatientCount"] as? Int ?? 0
-            
-            transaction.setData([
-                "doctorId": doctorId,
-                "date": dateString,
-                "currentPatientCount": currentCount + 1
-            ], forDocument: availabilityRef, merge: true)
-            
-            return nil
-        }) { (object, error) in
-            if let error = error {
-                print("❌ Transaction failed: \(error.localizedDescription)")
-            } else {
-                // Grab the current user's name to save into the appointment
-                let patientName = self.currentUser?.fullName ?? "Unknown Patient"
+            db.runTransaction({ (transaction, errorPointer) -> Any? in
+                let availDoc: DocumentSnapshot
+                do { try availDoc = transaction.getDocument(availabilityRef) }
+                catch { return nil }
                 
-                let newAppt = Appointment(patientId: patientId, patientName: patientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes)
-                try? self.db.collection("appointments").addDocument(from: newAppt)
+                let currentCount = availDoc.data()?["currentPatientCount"] as? Int ?? 0
+                
+                transaction.setData([
+                    "doctorId": doctorId,
+                    "date": dateString,
+                    "currentPatientCount": currentCount + 1
+                ], forDocument: availabilityRef, merge: true)
+                
+                return nil
+            }) { (object, error) in
+                if let error = error {
+                    print("❌ Transaction failed: \(error.localizedDescription)")
+                } else {
+                    // THE FIX: Smart fallback for old accounts that don't have a fullName saved
+                    let emailPrefix = self.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Patient"
+                    let finalPatientName = self.currentUser?.fullName ?? emailPrefix
+                    
+                    let newAppt = Appointment(patientId: patientId, patientName: finalPatientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes)
+                    try? self.db.collection("appointments").addDocument(from: newAppt)
+                }
             }
         }
-    }
     
     func cancelAppointment(appointment: Appointment) {
         guard let docId = appointment.id else { return }

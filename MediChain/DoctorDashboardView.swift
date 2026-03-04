@@ -22,7 +22,7 @@ struct DoctorDashboardView: View {
     
     var body: some View {
         NavigationView {
-            // THE FIX: Using a ZStack to handle the background safely
+            // THE FIX: A ZStack safely locks the background behind the content
             ZStack {
                 Color(UIColor.systemGroupedBackground)
                     .ignoresSafeArea()
@@ -42,7 +42,8 @@ struct DoctorDashboardView: View {
                                 Text("Welcome back,")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                Text(authViewModel.currentUser?.fullName ?? "Doctor")
+                                // Smart fallback here as well
+                                Text(authViewModel.currentUser?.fullName ?? authViewModel.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Doctor")
                                     .font(.title2)
                                     .fontWeight(.bold)
                             }
@@ -146,7 +147,9 @@ struct DoctorDashboardView: View {
                     .padding(.bottom, 30)
                 }
             }
-            .navigationTitle("Doctor Portal") // Moved back out where it belongs!
+            // All Navigation modifiers MUST be attached to the ZStack, not the ScrollView
+            .navigationTitle("Doctor Portal")
+            .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 if let savedLimit = authViewModel.currentUser?.dailyLimit {
                     self.dailyLimit = savedLimit
@@ -170,6 +173,8 @@ struct DoctorDashboardView: View {
                 }
             }
         }
+        // THE FIX: This prevents iOS from breaking the Nav Bar during login/logout swaps
+        .navigationViewStyle(.stack)
     }
 }
 
