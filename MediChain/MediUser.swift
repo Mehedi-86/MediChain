@@ -7,19 +7,18 @@
 
 import Foundation
 
-// Logic to distinguish between Doctors and Patients
 enum UserRole: String, Codable {
     case doctor = "Doctor"
     case patient = "Patient"
 }
 
-struct MediUser: Codable, Identifiable, Hashable { // Added Hashable for Picker support
+struct MediUser: Codable, Identifiable, Hashable {
     var id: String { uid }
     let uid: String
     let email: String
+    var fullName: String? // --- NEW FIELD ---
     let role: UserRole
     
-    // New Fields for Doctor Capacity
     var dutyStart: String?
     var dutyEnd: String?
     var dailyLimit: Int?

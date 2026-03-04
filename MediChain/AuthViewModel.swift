@@ -21,7 +21,8 @@ class AuthViewModel: ObservableObject {
     
     // MARK: - Authentication
     
-    func signUp(email: String, password: String, role: UserRole) {
+    // UPDATED: Now requires fullName during sign up
+    func signUp(email: String, password: String, fullName: String, role: UserRole) {
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("❌ Auth Error: \(error.localizedDescription)")
@@ -29,7 +30,9 @@ class AuthViewModel: ObservableObject {
             }
             
             guard let uid = result?.user.uid else { return }
-            let newUser = MediUser(uid: uid, email: email, role: role, dutyStart: "7:00 PM", dutyEnd: "9:00 PM", dailyLimit: 5)
+            
+            // Save fullName to the database
+            let newUser = MediUser(uid: uid, email: email, fullName: fullName, role: role, dutyStart: "18:00", dutyEnd: "20:00", dailyLimit: 5)
             
             try? self.db.collection("users").document(uid).setData(from: newUser) { error in
                 if error == nil {
@@ -64,7 +67,6 @@ class AuthViewModel: ObservableObject {
     
     // MARK: - Doctor Duty Management
     
-    // UPDATED: Now accepts dynamic start and end times
     func updateDoctorDuty(limit: Int, start: String, end: String) {
         guard let uid = currentUser?.uid else { return }
         
@@ -186,7 +188,10 @@ class AuthViewModel: ObservableObject {
             if let error = error {
                 print("❌ Transaction failed: \(error.localizedDescription)")
             } else {
-                let newAppt = Appointment(patientId: patientId, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes)
+                // Grab the current user's name to save into the appointment
+                let patientName = self.currentUser?.fullName ?? "Unknown Patient"
+                
+                let newAppt = Appointment(patientId: patientId, patientName: patientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes)
                 try? self.db.collection("appointments").addDocument(from: newAppt)
             }
         }

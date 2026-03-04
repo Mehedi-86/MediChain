@@ -13,59 +13,101 @@ struct PatientDashboardView: View {
     
     var body: some View {
         NavigationView {
-            List {
-                Section(header: Text("My Medical Timeline")) {
-                    Label("View Scanned Prescriptions", systemImage: "doc.text.viewfinder")
-                    Label("Export Health Report (PDF)", systemImage: "arrow.up.doc")
-                }
+            // THE FIX: Using a ZStack to handle the background safely
+            ZStack {
+                Color(UIColor.systemGroupedBackground)
+                    .ignoresSafeArea()
                 
-                Section(header: Text("Upcoming Appointments")) {
-                    if authViewModel.patientAppointments.isEmpty {
-                        Text("No appointments scheduled yet.")
-                            .foregroundColor(.gray)
-                    } else {
-                        ForEach(authViewModel.patientAppointments) { appt in
+                ScrollView {
+                    VStack(spacing: 20) {
+                        
+                        // MARK: - Premium Profile Header
+                        HStack(spacing: 15) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .resizable()
+                                .frame(width: 60, height: 60)
+                                .foregroundColor(.blue)
+                                .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 3)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Welcome back,")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text(authViewModel.currentUser?.fullName ?? "Patient")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        
+                        // MARK: - Action Buttons
+                        HStack(spacing: 15) {
+                            ActionButton(title: "Prescriptions", icon: "doc.text.viewfinder", color: .teal)
+                            ActionButton(title: "Health Report", icon: "arrow.up.doc.fill", color: .purple)
+                        }
+                        .padding(.horizontal)
+                        
+                        // MARK: - Telehealth Booking Area
+                        Button(action: {
+                            showBookingSheet = true
+                        }) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("Appt with Dr. \(appt.doctorName ?? "Unknown")")
+                                    Text("Need to see a doctor?")
                                         .font(.headline)
-                                    
-                                    // Combine Date and Duty Hours here
-                                    Text("\(appt.date.formatted(.dateTime.day().month().year())) • \(appt.timeSlot ?? "7:00 PM - 9:00 PM")")
+                                        .foregroundColor(.white)
+                                    Text("Book a new telehealth session now.")
                                         .font(.subheadline)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(.white.opacity(0.8))
                                 }
-                                
                                 Spacer()
-                                
-                                Button(action: {
-                                    authViewModel.cancelAppointment(appointment: appt)
-                                }) {
-                                    Text("Cancel")
-                                        .font(.caption)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(Color.red.opacity(0.1))
-                                        .foregroundColor(.red)
-                                        .cornerRadius(6)
-                                }
-                                .buttonStyle(BorderlessButtonStyle())
+                                Image(systemName: "calendar.badge.plus")
+                                    .font(.system(size: 30))
+                                    .foregroundColor(.white)
                             }
-                            .padding(.vertical, 4)
+                            .padding()
+                            .background(
+                                LinearGradient(gradient: Gradient(colors: [Color.blue, Color(red: 0.2, green: 0.5, blue: 0.9)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 5)
                         }
+                        .padding(.horizontal)
+                        
+                        // MARK: - Floating Appointments Feed
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Upcoming Appointments")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                            
+                            if authViewModel.patientAppointments.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "calendar.badge.exclamationmark")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.gray.opacity(0.5))
+                                    Text("No appointments scheduled yet.")
+                                        .foregroundColor(.gray)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 30)
+                            } else {
+                                ForEach(authViewModel.patientAppointments) { appt in
+                                    AppointmentCardView(appointment: appt) {
+                                        authViewModel.cancelAppointment(appointment: appt)
+                                    }
+                                    .padding(.horizontal)
+                                }
+                            }
+                        }
+                        .padding(.top, 10)
                     }
-                }
-                
-                Section(header: Text("Telehealth Services")) {
-                    Button(action: {
-                        showBookingSheet = true
-                    }) {
-                        Label("Request New Appointment", systemImage: "calendar.badge.plus")
-                            .foregroundColor(.blue)
-                    }
+                    .padding(.bottom, 30)
                 }
             }
-            .navigationTitle("Patient Portal")
+            .navigationTitle("Patient Portal") // Properly positioned!
             .onAppear {
                 authViewModel.fetchPatientAppointments()
             }
@@ -74,10 +116,103 @@ struct PatientDashboardView: View {
                     .environmentObject(authViewModel)
             }
             .toolbar {
-                Button("Sign Out") {
-                    authViewModel.signOut()
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { authViewModel.signOut() }) {
+                        Text("Sign Out")
+                            .fontWeight(.bold)
+                            .foregroundColor(.red)
+                    }
                 }
             }
         }
+    }
+}
+
+// MARK: - Custom Appointment Card UI
+struct AppointmentCardView: View {
+    var appointment: Appointment
+    var onCancel: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                HStack(spacing: 10) {
+                    Image(systemName: "stethoscope")
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.blue)
+                        .clipShape(Circle())
+                    
+                    Text("Dr. \(appointment.doctorName ?? "Unknown")")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+                
+                Spacer()
+                
+                Button(action: onCancel) {
+                    Text("Cancel")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.red.opacity(0.1))
+                        .foregroundColor(.red)
+                        .cornerRadius(20)
+                }
+            }
+            
+            Divider()
+            
+            HStack(spacing: 20) {
+                HStack(spacing: 6) {
+                    Image(systemName: "calendar")
+                        .foregroundColor(.gray)
+                    Text(appointment.date.formatted(.dateTime.day().month().year()))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .foregroundColor(.gray)
+                    Text(appointment.timeSlot ?? "Unknown Slot")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding()
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+    }
+}
+
+// MARK: - Reusable Square Button
+struct ActionButton: View {
+    var title: String
+    var icon: String
+    var color: Color
+    
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+                .frame(width: 50, height: 50)
+                .background(color.opacity(0.15))
+                .clipShape(Circle())
+            
+            Text(title)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 15)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
 }

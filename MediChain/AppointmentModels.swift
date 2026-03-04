@@ -18,9 +18,10 @@ struct DoctorAvailability: Codable {
 struct Appointment: Codable, Identifiable {
     @DocumentID var id: String?
     let patientId: String
+    var patientName: String? // --- NEW FIELD ---
     let doctorId: String
     var doctorName: String?
-    var timeSlot: String? // --- NEW FIELD to hold "7:00 PM - 9:00 PM" ---
+    var timeSlot: String?
     let date: Date
     let status: String
     let notes: String
