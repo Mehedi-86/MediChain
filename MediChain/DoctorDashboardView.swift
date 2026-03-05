@@ -184,6 +184,8 @@ struct PatientQueueCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            
+            // HEADER: Name & Serial Number
             HStack {
                 HStack(spacing: 10) {
                     Image(systemName: "person.circle.fill")
@@ -197,35 +199,55 @@ struct PatientQueueCardView: View {
                 
                 Spacer()
                 
-                Text(appointment.date.formatted(.dateTime.day().month()))
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.indigo)
+                if let serial = appointment.serialNumber {
+                    Text("Serial: #\(serial)")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.2))
+                        .foregroundColor(.orange)
+                        .cornerRadius(8)
+                }
             }
             
             Divider()
             
-            HStack(alignment: .top, spacing: 15) {
+            // MIDDLE: Reason for visit
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "doc.text.fill")
+                    .foregroundColor(.gray)
+                    .font(.subheadline)
+                    .padding(.top, 2)
+                
+                Text(appointment.notes.isEmpty ? "No reason provided" : appointment.notes)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            // BOTTOM: Date and Time
+            HStack {
                 HStack(spacing: 6) {
-                    Image(systemName: "clock.fill")
+                    Image(systemName: "calendar")
                         .foregroundColor(.gray)
-                        .font(.caption)
-                    Text(appointment.timeSlot ?? "Unknown Slot")
-                        .font(.subheadline)
+                        .font(.subheadline) // Slightly larger icon
+                    Text(appointment.date.formatted(.dateTime.day().month().year()))
+                        .font(.subheadline) // Upgraded from .caption to .subheadline
+                        .fontWeight(.medium) // Added medium weight for better readability
                         .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: "doc.text.fill")
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
                         .foregroundColor(.gray)
-                        .font(.caption)
-                        .padding(.top, 2)
-                    Text(appointment.notes.isEmpty ? "No reason provided" : appointment.notes)
-                        .font(.subheadline)
+                        .font(.subheadline) // Slightly larger icon
+                    Text(appointment.timeSlot ?? "Unknown Slot")
+                        .font(.subheadline) // Upgraded from .caption to .subheadline
+                        .fontWeight(.medium) // Added medium weight for better readability
                         .foregroundColor(.secondary)
-                        .multilineTextAlignment(.trailing)
+                        .lineLimit(1)
                 }
             }
         }

@@ -25,4 +25,5 @@ struct Appointment: Codable, Identifiable {
     let date: Date
     let status: String
     let notes: String
+    var serialNumber: Int?
 }

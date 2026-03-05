@@ -15,18 +15,19 @@ struct BookingView: View {
     @State private var selectedDoctor: MediUser?
     @State private var notes = ""
     
+    // NEW: Alert State Variables
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Select Visit Date")) {
                     DatePicker("Appointment Date", selection: $selectedDate, in: Date()..., displayedComponents: .date)
                         .onChange(of: selectedDate) { newDate in
-                            // FAIL-SAFE: Clear the selected doctor if the date changes
                             selectedDoctor = nil
-                            
                             authViewModel.fetchAvailableDoctors(for: newDate)
                         }
-                        // THE FIX: Lock the date picker if a doctor is currently selected
                         .disabled(selectedDoctor != nil)
                 }
                 
@@ -52,13 +53,19 @@ struct BookingView: View {
                 Button(action: {
                     if let doctor = selectedDoctor {
                         let docName = doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor"
-                        
                         let start = doctor.dutyStart ?? "7:00 PM"
                         let end = doctor.dutyEnd ?? "9:00 PM"
                         let slot = "\(start) - \(end)"
                         
-                        authViewModel.scheduleAppointment(doctorId: doctor.uid, doctorName: docName, timeSlot: slot, date: selectedDate, notes: notes)
-                        dismiss()
+                        // Handle the completion block
+                        authViewModel.scheduleAppointment(doctorId: doctor.uid, doctorName: docName, timeSlot: slot, date: selectedDate, notes: notes) { success, message in
+                            if success {
+                                dismiss() // Close sheet if booked
+                            } else {
+                                alertMessage = message // Show error if duplicate date
+                                showAlert = true
+                            }
+                        }
                     }
                 }) {
                     Text("Confirm Appointment")
@@ -78,6 +85,10 @@ struct BookingView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+            // Displays the duplicate booking error
+            .alert(isPresented: $showAlert) {
+                Alert(title: Text("Booking Unavailable"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
             }
         }
     }

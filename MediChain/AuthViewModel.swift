@@ -165,9 +165,18 @@ class AuthViewModel: ObservableObject {
 
     // MARK: - Appointment Logic (Booking & Canceling)
         
-        func scheduleAppointment(doctorId: String, doctorName: String, timeSlot: String, date: Date, notes: String) {
+        // UPDATED: Now includes a completion handler and duplicate checking
+        func scheduleAppointment(doctorId: String, doctorName: String, timeSlot: String, date: Date, notes: String, completion: @escaping (Bool, String) -> Void) {
             guard let patientId = currentUser?.uid else { return }
             let dateString = formatDate(date)
+            
+            // 1. PREVENT MULTIPLE APPOINTMENTS ON THE SAME DAY
+            let alreadyBooked = patientAppointments.contains { formatDate($0.date) == dateString }
+            if alreadyBooked {
+                completion(false, "You already have an appointment scheduled for \(dateString). Please choose another date.")
+                return
+            }
+            
             let availabilityRef = db.collection("availability").document("\(doctorId)_\(dateString)")
             
             db.runTransaction({ (transaction, errorPointer) -> Any? in
@@ -176,24 +185,27 @@ class AuthViewModel: ObservableObject {
                 catch { return nil }
                 
                 let currentCount = availDoc.data()?["currentPatientCount"] as? Int ?? 0
+                let newSerial = currentCount + 1 // This is their exact queue position
                 
                 transaction.setData([
                     "doctorId": doctorId,
                     "date": dateString,
-                    "currentPatientCount": currentCount + 1
+                    "currentPatientCount": newSerial
                 ], forDocument: availabilityRef, merge: true)
                 
-                return nil
+                return newSerial // Pass the serial number out of the transaction
             }) { (object, error) in
                 if let error = error {
-                    print("❌ Transaction failed: \(error.localizedDescription)")
-                } else {
-                    // THE FIX: Smart fallback for old accounts that don't have a fullName saved
+                    completion(false, "Booking failed: \(error.localizedDescription)")
+                } else if let serialNumber = object as? Int {
                     let emailPrefix = self.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Patient"
                     let finalPatientName = self.currentUser?.fullName ?? emailPrefix
                     
-                    let newAppt = Appointment(patientId: patientId, patientName: finalPatientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes)
+                    // Save the serial number into the new appointment
+                    let newAppt = Appointment(patientId: patientId, patientName: finalPatientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes, serialNumber: serialNumber)
+                    
                     try? self.db.collection("appointments").addDocument(from: newAppt)
+                    completion(true, "Success")
                 }
             }
         }

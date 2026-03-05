@@ -32,7 +32,6 @@ struct PatientDashboardView: View {
                                 Text("Welcome back,")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                // Smart fallback here as well
                                 Text(authViewModel.currentUser?.fullName ?? authViewModel.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Patient")
                                     .font(.title2)
                                     .fontWeight(.bold)
@@ -126,7 +125,6 @@ struct PatientDashboardView: View {
                 }
             }
         }
-        // Prevents Nav Bar disappearing bug
         .navigationViewStyle(.stack)
     }
 }
@@ -138,6 +136,8 @@ struct AppointmentCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            
+            // HEADER ROW
             HStack {
                 HStack(spacing: 10) {
                     Image(systemName: "stethoscope")
@@ -153,21 +153,36 @@ struct AppointmentCardView: View {
                 
                 Spacer()
                 
-                Button(action: onCancel) {
-                    Text("Cancel")
+                if let serial = appointment.serialNumber {
+                    Text("Serial: #\(serial)")
                         .font(.caption)
                         .fontWeight(.bold)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
-                        .cornerRadius(20)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.2))
+                        .foregroundColor(.orange)
+                        .cornerRadius(8)
+                }
+                
+                // THE FIX: iOS Native 3-Dot Menu
+                Menu {
+                    Button(role: .destructive, action: onCancel) {
+                        Label("Cancel Appointment", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.title3)
+                        .foregroundColor(.gray)
+                        // Adding padding makes the invisible tap target larger and easier to hit
+                        .padding(.leading, 8)
+                        .padding(.vertical, 4)
                 }
             }
             
             Divider()
             
-            HStack(spacing: 20) {
+            // FOOTER ROW (Date & Time perfectly horizontal)
+            HStack {
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
                         .foregroundColor(.gray)
@@ -176,12 +191,15 @@ struct AppointmentCardView: View {
                         .foregroundColor(.secondary)
                 }
                 
+                Spacer() // This pushes the time to the far right so they never collide
+                
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
                         .foregroundColor(.gray)
                     Text(appointment.timeSlot ?? "Unknown Slot")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .lineLimit(1) // Forces the text to stay on exactly one horizontal line
                 }
             }
         }
