@@ -11,6 +11,30 @@ struct PatientDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showBookingSheet = false
     
+    // MARK: - Pagination State
+    @State private var currentPage = 0
+    private let itemsPerPage = 5
+    
+    // MARK: - Computed Pagination Variables
+    var totalPages: Int {
+        // Calculates how many pages we need (e.g., 6 items / 5 = 2 pages)
+        Int(ceil(Double(authViewModel.patientAppointments.count) / Double(itemsPerPage)))
+    }
+    
+    var paginatedAppointments: [Appointment] {
+        let start = currentPage * itemsPerPage
+        // Safety check if an appointment is canceled and the page becomes empty
+        if start >= authViewModel.patientAppointments.count && currentPage > 0 {
+            DispatchQueue.main.async { currentPage -= 1 }
+            return []
+        }
+        
+        let end = min(start + itemsPerPage, authViewModel.patientAppointments.count)
+        guard start < authViewModel.patientAppointments.count else { return [] }
+        
+        return Array(authViewModel.patientAppointments[start..<end])
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -75,7 +99,7 @@ struct PatientDashboardView: View {
                         }
                         .padding(.horizontal)
                         
-                        // MARK: - Floating Appointments Feed
+                        // MARK: - Floating Appointments Feed (Paginated)
                         VStack(alignment: .leading, spacing: 15) {
                             Text("Upcoming Appointments")
                                 .font(.title3)
@@ -93,11 +117,55 @@ struct PatientDashboardView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 30)
                             } else {
-                                ForEach(authViewModel.patientAppointments) { appt in
+                                // Feed uses the paginated array instead of the full array!
+                                ForEach(paginatedAppointments) { appt in
                                     AppointmentCardView(appointment: appt) {
                                         authViewModel.cancelAppointment(appointment: appt)
                                     }
                                     .padding(.horizontal)
+                                }
+                                
+                                // MARK: - Pagination Controls
+                                if totalPages > 1 {
+                                    HStack {
+                                        // Previous Button
+                                        Button(action: {
+                                            withAnimation { currentPage -= 1 }
+                                        }) {
+                                            Image(systemName: "chevron.left")
+                                                .font(.headline)
+                                                .padding(12)
+                                                .background(currentPage == 0 ? Color.gray.opacity(0.2) : Color.blue.opacity(0.1))
+                                                .foregroundColor(currentPage == 0 ? .gray : .blue)
+                                                .clipShape(Circle())
+                                        }
+                                        .disabled(currentPage == 0)
+                                        
+                                        Spacer()
+                                        
+                                        // Page Indicator
+                                        Text("Page \(currentPage + 1) of \(totalPages)")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.secondary)
+                                        
+                                        Spacer()
+                                        
+                                        // Next Button
+                                        Button(action: {
+                                            withAnimation { currentPage += 1 }
+                                        }) {
+                                            Image(systemName: "chevron.right")
+                                                .font(.headline)
+                                                .padding(12)
+                                                .background(currentPage >= totalPages - 1 ? Color.gray.opacity(0.2) : Color.blue.opacity(0.1))
+                                                .foregroundColor(currentPage >= totalPages - 1 ? .gray : .blue)
+                                                .clipShape(Circle())
+                                        }
+                                        .disabled(currentPage >= totalPages - 1)
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 10)
                                 }
                             }
                         }
@@ -137,7 +205,6 @@ struct AppointmentCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             
-            // HEADER ROW
             HStack {
                 HStack(spacing: 10) {
                     Image(systemName: "stethoscope")
@@ -164,7 +231,6 @@ struct AppointmentCardView: View {
                         .cornerRadius(8)
                 }
                 
-                // THE FIX: iOS Native 3-Dot Menu
                 Menu {
                     Button(role: .destructive, action: onCancel) {
                         Label("Cancel Appointment", systemImage: "trash")
@@ -173,7 +239,6 @@ struct AppointmentCardView: View {
                     Image(systemName: "ellipsis")
                         .font(.title3)
                         .foregroundColor(.gray)
-                        // Adding padding makes the invisible tap target larger and easier to hit
                         .padding(.leading, 8)
                         .padding(.vertical, 4)
                 }
@@ -181,7 +246,6 @@ struct AppointmentCardView: View {
             
             Divider()
             
-            // FOOTER ROW (Date & Time perfectly horizontal)
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
@@ -191,7 +255,7 @@ struct AppointmentCardView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                Spacer() // This pushes the time to the far right so they never collide
+                Spacer()
                 
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
@@ -199,7 +263,7 @@ struct AppointmentCardView: View {
                     Text(appointment.timeSlot ?? "Unknown Slot")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .lineLimit(1) // Forces the text to stay on exactly one horizontal line
+                        .lineLimit(1)
                 }
             }
         }
