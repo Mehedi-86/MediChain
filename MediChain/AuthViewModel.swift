@@ -87,26 +87,41 @@ class AuthViewModel: ObservableObject {
     
     // MARK: - Appointment Logic (Fetching)
     
-    func fetchDoctorAppointments() {
-        guard let doctorId = currentUser?.uid else { return }
+    // MARK: - Appointment Logic (Fetching)
         
-        db.collection("appointments")
-            .whereField("doctorId", isEqualTo: doctorId)
-            .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("❌ Fetch Error: \(error.localizedDescription)")
-                    return
+        func fetchDoctorAppointments() {
+            guard let doctorId = currentUser?.uid else { return }
+            
+            db.collection("appointments")
+                .whereField("doctorId", isEqualTo: doctorId)
+                .addSnapshotListener { snapshot, error in
+                    if let error = error {
+                        print("❌ Fetch Error: \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    self.appointments = snapshot?.documents.compactMap { doc in
+                        try? doc.data(as: Appointment.self)
+                    } ?? []
+                    
+                    DispatchQueue.main.async {
+                        // THE FIX: Two-step sorting logic
+                        self.appointments.sort { appt1, appt2 in
+                            // 1. Strip away the exact hours/minutes to compare just the calendar day
+                            let day1 = Calendar.current.startOfDay(for: appt1.date)
+                            let day2 = Calendar.current.startOfDay(for: appt2.date)
+                            
+                            if day1 == day2 {
+                                // 2. If it's the same day, sort by Serial Number
+                                return (appt1.serialNumber ?? 0) < (appt2.serialNumber ?? 0)
+                            }
+                            
+                            // Otherwise, sort by the date
+                            return day1 < day2
+                        }
+                    }
                 }
-                
-                self.appointments = snapshot?.documents.compactMap { doc in
-                    try? doc.data(as: Appointment.self)
-                } ?? []
-                
-                DispatchQueue.main.async {
-                    self.appointments.sort { $0.date < $1.date }
-                }
-            }
-    }
+        }
 
     func fetchAvailableDoctors(for date: Date) {
         let dateString = formatDate(date)
@@ -136,32 +151,46 @@ class AuthViewModel: ObservableObject {
     }
 
     func fetchPatientAppointments() {
-        guard let uid = currentUser?.uid else { return }
-        
-        db.collection("appointments")
-            .whereField("patientId", isEqualTo: uid)
-            .addSnapshotListener { snapshot, error in
-                if let error = error {
-                    print("❌ Error fetching: \(error.localizedDescription)")
-                    return
-                }
-                
-                let allAppts = snapshot?.documents.compactMap { doc in
-                    try? doc.data(as: Appointment.self)
-                } ?? []
-                
-                DispatchQueue.main.async {
-                    self.patientAppointments = allAppts.filter { appt in
-                        if appt.date < Calendar.current.startOfDay(for: Date()) {
-                            self.deleteExpiredAppointment(id: appt.id)
-                            return false
-                        }
-                        return true
+            guard let uid = currentUser?.uid else { return }
+            
+            db.collection("appointments")
+                .whereField("patientId", isEqualTo: uid)
+                .addSnapshotListener { snapshot, error in
+                    if let error = error {
+                        print("❌ Error fetching: \(error.localizedDescription)")
+                        return
                     }
-                    self.patientAppointments.sort { $0.date < $1.date }
+                    
+                    let allAppts = snapshot?.documents.compactMap { doc in
+                        try? doc.data(as: Appointment.self)
+                    } ?? []
+                    
+                    DispatchQueue.main.async {
+                        self.patientAppointments = allAppts.filter { appt in
+                            if appt.date < Calendar.current.startOfDay(for: Date()) {
+                                self.deleteExpiredAppointment(id: appt.id)
+                                return false
+                            }
+                            return true
+                        }
+                        
+                        // THE FIX: Two-step sorting logic applied to the Patient Dashboard!
+                        self.patientAppointments.sort { appt1, appt2 in
+                            // 1. Strip away the exact hours/minutes to compare just the calendar day
+                            let day1 = Calendar.current.startOfDay(for: appt1.date)
+                            let day2 = Calendar.current.startOfDay(for: appt2.date)
+                            
+                            if day1 == day2 {
+                                // 2. If it's the same day, sort by Serial Number
+                                return (appt1.serialNumber ?? 0) < (appt2.serialNumber ?? 0)
+                            }
+                            
+                            // Otherwise, sort by the date
+                            return day1 < day2
+                        }
+                    }
                 }
-            }
-    }
+        }
 
     // MARK: - Appointment Logic (Booking & Canceling)
         
