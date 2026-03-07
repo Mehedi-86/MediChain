@@ -10,9 +10,10 @@ import SwiftUI
 struct PatientDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showBookingSheet = false
-    
-    // STEP 1: Add the State Variable for the scanner
     @State private var showScannerSheet = false
+    
+    // STEP 1: Add the State Variable for the digital wallet
+    @State private var showDigitalWallet = false
     
     // MARK: - Pagination State
     @State private var currentPage = 0
@@ -64,6 +65,18 @@ struct PatientDashboardView: View {
                                     .fontWeight(.bold)
                             }
                             Spacer()
+                            
+                            // STEP 2: The new QR Code Button
+                            Button(action: {
+                                showDigitalWallet = true
+                            }) {
+                                Image(systemName: "qrcode")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.blue)
+                                    .padding(10)
+                                    .background(Color.blue.opacity(0.1))
+                                    .clipShape(Circle())
+                            }
                         }
                         .padding(.horizontal)
                         .padding(.top, 10)
@@ -71,7 +84,6 @@ struct PatientDashboardView: View {
                         // MARK: - Action Buttons
                         HStack(spacing: 15) {
                             
-                            // STEP 2: Wrap the ActionButton in a clickable Button
                             Button(action: {
                                 showScannerSheet = true
                             }) {
@@ -193,9 +205,13 @@ struct PatientDashboardView: View {
                 BookingView()
                     .environmentObject(authViewModel)
             }
-            // STEP 3: Attach the Sheet for the Scanner
             .sheet(isPresented: $showScannerSheet) {
                 PrescriptionScannerView()
+            }
+            // STEP 3: Attach the Sheet for the Digital Wallet
+            .sheet(isPresented: $showDigitalWallet) {
+                DigitalWalletView()
+                    .environmentObject(authViewModel)
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
