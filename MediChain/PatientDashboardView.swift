@@ -11,6 +11,9 @@ struct PatientDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showBookingSheet = false
     
+    // STEP 1: Add the State Variable for the scanner
+    @State private var showScannerSheet = false
+    
     // MARK: - Pagination State
     @State private var currentPage = 0
     private let itemsPerPage = 5
@@ -67,7 +70,14 @@ struct PatientDashboardView: View {
                         
                         // MARK: - Action Buttons
                         HStack(spacing: 15) {
-                            ActionButton(title: "Prescriptions", icon: "doc.text.viewfinder", color: .teal)
+                            
+                            // STEP 2: Wrap the ActionButton in a clickable Button
+                            Button(action: {
+                                showScannerSheet = true
+                            }) {
+                                ActionButton(title: "Prescriptions", icon: "doc.text.viewfinder", color: .teal)
+                            }
+                            
                             ActionButton(title: "Health Report", icon: "arrow.up.doc.fill", color: .purple)
                         }
                         .padding(.horizontal)
@@ -182,6 +192,10 @@ struct PatientDashboardView: View {
             .sheet(isPresented: $showBookingSheet) {
                 BookingView()
                     .environmentObject(authViewModel)
+            }
+            // STEP 3: Attach the Sheet for the Scanner
+            .sheet(isPresented: $showScannerSheet) {
+                PrescriptionScannerView()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
