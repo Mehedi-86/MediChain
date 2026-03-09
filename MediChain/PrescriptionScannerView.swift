@@ -12,9 +12,12 @@ struct PrescriptionScannerView: View {
     @State private var scannedImages: [UIImage] = []
     @State private var extractedText: String = ""
     @State private var isProcessing = false
-    @State private var isPulsing = false // Drives the loading animation
+    @State private var isPulsing = false // Drives the offline OCR loading animation
     
-    // The invisible "brain"
+    // MUBIN'S ADDITION: Drives the Gemini AI loading animation
+    @State private var isCleaningText = false
+    
+    // The invisible "brain" for offline OCR
     let textRecognizer = TextRecognizer()
     
     var body: some View {
@@ -89,7 +92,7 @@ struct PrescriptionScannerView: View {
                                         .font(.headline)
                                         .foregroundColor(.primary)
                                     Spacer()
-                                    if isProcessing {
+                                    if isProcessing || isCleaningText {
                                         ProgressView()
                                             .tint(.teal)
                                     } else {
@@ -109,12 +112,11 @@ struct PrescriptionScannerView: View {
                                             ProgressView()
                                                 .scaleEffect(1.5)
                                                 .padding(.bottom, 8)
-                                            Text("AI is analyzing the document...")
+                                            Text("Apple Vision is scanning...")
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
                                                 .opacity(isPulsing ? 0.5 : 1.0)
                                                 .onAppear {
-                                                    // Start the pulsing animation
                                                     withAnimation(.easeInOut(duration: 1.0).repeatForever()) {
                                                         isPulsing.toggle()
                                                     }
@@ -143,24 +145,36 @@ struct PrescriptionScannerView: View {
                             .transition(.opacity.combined(with: .move(edge: .bottom))) // Smooth entrance
                         }
                         
-                        // MARK: - Save Button
+                        // MARK: - Gemini AI Button (Replaces Old Save Button)
                         if !extractedText.isEmpty && !isProcessing {
                             Button(action: {
-                                print("Ready to save to database!")
+                                Task {
+                                    await cleanTextWithGemini()
+                                }
                             }) {
                                 HStack {
-                                    Text("Save to Digital Records")
-                                        .font(.headline)
-                                        .fontWeight(.bold)
-                                    Image(systemName: "arrow.right.circle.fill")
+                                    if isCleaningText {
+                                        ProgressView()
+                                            .tint(.white)
+                                            .padding(.trailing, 5)
+                                        Text("Gemini is Analyzing...")
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                    } else {
+                                        Text("Clean with Gemini AI")
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                        Image(systemName: "sparkles")
+                                    }
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
-                                .background(Color.blue)
+                                .background(isCleaningText ? Color.gray : Color.blue)
                                 .foregroundColor(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                                .shadow(color: isCleaningText ? .clear : .blue.opacity(0.3), radius: 8, x: 0, y: 4)
                             }
+                            .disabled(isCleaningText) // Prevents spam-clicking
                             .padding(.horizontal, 24)
                             .padding(.top, 8)
                         }
@@ -180,9 +194,8 @@ struct PrescriptionScannerView: View {
         .navigationViewStyle(.stack)
     }
     
-    // MARK: - AI Processing Function
+    // MARK: - Apple Vision OCR Processing
     private func processImage(_ image: UIImage) {
-        // Trigger smooth UI animations
         withAnimation(.spring()) {
             isProcessing = true
             extractedText = ""
@@ -192,6 +205,37 @@ struct PrescriptionScannerView: View {
             withAnimation(.spring()) {
                 self.extractedText = result
                 self.isProcessing = false
+            }
+        }
+    }
+    
+    // MARK: - Gemini AI Processing
+    private func cleanTextWithGemini() async {
+        // Turn on the loading spinner
+        await MainActor.run {
+            withAnimation(.spring()) {
+                isCleaningText = true
+            }
+        }
+        
+        do {
+            // Send the messy text to Mubin's GeminiService
+            let cleanData = try await GeminiService.shared.cleanPrescriptionText(rawText: extractedText)
+            
+            // Update the UI with the beautiful, clean text!
+            await MainActor.run {
+                withAnimation(.spring()) {
+                    extractedText = cleanData
+                    isCleaningText = false
+                }
+            }
+        } catch {
+            // If the internet drops or something fails, let the user know
+            await MainActor.run {
+                withAnimation(.spring()) {
+                    extractedText = "Error communicating with AI: \(error.localizedDescription)\n\nOriginal Text:\n\(extractedText)"
+                    isCleaningText = false
+                }
             }
         }
     }
