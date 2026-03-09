@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		55944DB72F56B7370067AB4A /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 55944DB62F56B7370067AB4A /* FirebaseAuth */; };
 		55944DB92F56B7370067AB4A /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 55944DB82F56B7370067AB4A /* FirebaseFirestore */; };
+		55C91D782F5DDE1400D37971 /* GoogleGenerativeAI in Frameworks */ = {isa = PBXBuildFile; productRef = 55C91D772F5DDE1400D37971 /* GoogleGenerativeAI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,9 +35,22 @@
 		55944DA02F56B3130067AB4A /* MediChainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MediChainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		55C91D7C2F5DE59400D37971 /* Exceptions for "MediChain" folder in "MediChain" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 55944D882F56B3110067AB4A /* MediChain */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		55944D8B2F56B3110067AB4A /* MediChain */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				55C91D7C2F5DE59400D37971 /* Exceptions for "MediChain" folder in "MediChain" target */,
+			);
 			path = MediChain;
 			sourceTree = "<group>";
 		};
@@ -57,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				55C91D782F5DDE1400D37971 /* GoogleGenerativeAI in Frameworks */,
 				55944DB72F56B7370067AB4A /* FirebaseAuth in Frameworks */,
 				55944DB92F56B7370067AB4A /* FirebaseFirestore in Frameworks */,
 			);
@@ -121,6 +136,7 @@
 			packageProductDependencies = (
 				55944DB62F56B7370067AB4A /* FirebaseAuth */,
 				55944DB82F56B7370067AB4A /* FirebaseFirestore */,
+				55C91D772F5DDE1400D37971 /* GoogleGenerativeAI */,
 			);
 			productName = MediChain;
 			productReference = 55944D892F56B3110067AB4A /* MediChain.app */;
@@ -206,6 +222,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				55944DB52F56B7360067AB4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				55C91D762F5DDE1400D37971 /* XCRemoteSwiftPackageReference "generative-ai-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 55944D8A2F56B3110067AB4A /* Products */;
@@ -283,6 +300,8 @@
 /* Begin XCBuildConfiguration section */
 		55944DA82F56B3130067AB4A /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 55944D8B2F56B3110067AB4A /* MediChain */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -346,6 +365,8 @@
 		};
 		55944DA92F56B3130067AB4A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 55944D8B2F56B3110067AB4A /* MediChain */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -402,6 +423,8 @@
 		};
 		55944DAB2F56B3130067AB4A /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 55944D8B2F56B3110067AB4A /* MediChain */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -409,6 +432,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MediChain/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to the camera to scan your medical prescriptions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -434,6 +458,8 @@
 		};
 		55944DAC2F56B3130067AB4A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 55944D8B2F56B3110067AB4A /* MediChain */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -441,6 +467,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MediChain/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to the camera to scan your medical prescriptions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -594,6 +621,14 @@
 				minimumVersion = 12.10.0;
 			};
 		};
+		55C91D762F5DDE1400D37971 /* XCRemoteSwiftPackageReference "generative-ai-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/generative-ai-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.6;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -606,6 +641,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 55944DB52F56B7360067AB4A /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		55C91D772F5DDE1400D37971 /* GoogleGenerativeAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 55C91D762F5DDE1400D37971 /* XCRemoteSwiftPackageReference "generative-ai-swift" */;
+			productName = GoogleGenerativeAI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
