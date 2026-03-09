@@ -20,8 +20,9 @@ class GeminiService {
         return key
     }
     
-    // Initialize the Gemini 1.5 Flash model (perfect for fast text tasks)
-    private lazy var model = GenerativeModel(name: "gemini-1.5-flash", apiKey: apiKey)
+    // Initialize the Gemini 1.5 Flash model
+    // Added "-latest" to ensure the SDK finds the active version
+    private lazy var model = GenerativeModel(name: "gemini-flash-latest", apiKey: apiKey)
     
     // The main function that Mubin is building
     func cleanPrescriptionText(rawText: String) async throws -> String {
