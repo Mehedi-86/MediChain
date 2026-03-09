@@ -14,3 +14,5 @@ MediChain/GoogleService-Info.plist
 # Swift Package Manager
 .swiftpm/xcpkgany
 .build/Config.xcconfig
+MediChain/Config.xcconfig
+*.xcconfig
