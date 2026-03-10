@@ -38,9 +38,19 @@ struct BookingView: View {
                     } else {
                         Picker("Doctor", selection: $selectedDoctor) {
                             Text("Select a Doctor").tag(nil as MediUser?)
+                            
                             ForEach(authViewModel.availableDoctors, id: \.self) { doctor in
-                                Text(doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor")
+                                                            
+                                let rawName = doctor.fullName ?? doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor"
+                                let specialty = doctor.specialty ?? "General Physician"
+                                
+                                let docName = rawName.hasPrefix("Dr.") ? rawName : "Dr. \(rawName)"
+                                
+                            
+                                Text("\(docName)\n\(specialty)")
                                     .tag(doctor as MediUser?)
+                                
+                                
                             }
                         }
                     }
@@ -52,7 +62,8 @@ struct BookingView: View {
                 
                 Button(action: {
                     if let doctor = selectedDoctor {
-                        let docName = doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor"
+                        let rawName = doctor.fullName ?? doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor"
+                        let docName = rawName.hasPrefix("Dr.") ? rawName : "Dr. \(rawName)"
                         let start = doctor.dutyStart ?? "7:00 PM"
                         let end = doctor.dutyEnd ?? "9:00 PM"
                         let slot = "\(start) - \(end)"

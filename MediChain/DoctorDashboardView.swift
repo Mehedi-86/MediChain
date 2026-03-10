@@ -13,6 +13,8 @@ struct DoctorDashboardView: View {
     @State private var dailyLimit: Int = 5
     @State private var dutyStart = Date()
     @State private var dutyEnd = Date().addingTimeInterval(3600 * 2)
+    @State private var selectedSpecialty: String = "Gen. Physician"
+        let specialties = ["Gen. Physician", "Cardiologist", "Dermatologist", "Endocrinologist", "Neurologist", "Pediatrician", "Orthopedic", "Psychiatrist"]
     
     // MARK: - Date-Based Pagination State
     @State private var currentPageIndex = 0
@@ -77,6 +79,20 @@ struct DoctorDashboardView: View {
                             
                             Divider()
                             
+
+                            HStack {
+                                Text("Specialty")
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Picker("Specialty", selection: $selectedSpecialty) {
+                                    ForEach(specialties, id: \.self) { specialty in
+                                        Text(specialty).tag(specialty)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(.indigo)
+                            }
+                            
                             HStack {
                                 Text("Daily Patient Limit")
                                     .foregroundColor(.secondary)
@@ -103,7 +119,8 @@ struct DoctorDashboardView: View {
                             Button(action: {
                                 let startString = timeFormatter.string(from: dutyStart)
                                 let endString = timeFormatter.string(from: dutyEnd)
-                                authViewModel.updateDoctorDuty(limit: dailyLimit, start: startString, end: endString)
+                                // UPDATED: Pass the specialty!
+                                authViewModel.updateDoctorDuty(limit: dailyLimit, start: startString, end: endString, specialty: selectedSpecialty)
                             }) {
                                 Text("Save Duty Settings")
                                     .font(.headline)
@@ -220,8 +237,9 @@ struct DoctorDashboardView: View {
                 if let savedLimit = authViewModel.currentUser?.dailyLimit {
                     self.dailyLimit = savedLimit
                 }
-                if let startStr = authViewModel.currentUser?.dutyStart, let start = timeFormatter.date(from: startStr) {
-                    self.dutyStart = start
+                // NEW: Load the saved specialty
+                if let savedSpecialty = authViewModel.currentUser?.specialty {
+                    self.selectedSpecialty = savedSpecialty
                 }
                 if let endStr = authViewModel.currentUser?.dutyEnd, let end = timeFormatter.date(from: endStr) {
                     self.dutyEnd = end

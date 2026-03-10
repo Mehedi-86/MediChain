@@ -65,25 +65,29 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Doctor Duty Management
     
-    func updateDoctorDuty(limit: Int, start: String, end: String) {
-        guard let uid = currentUser?.uid else { return }
+    // MARK: - Doctor Duty Management
         
-        db.collection("users").document(uid).updateData([
-            "dailyLimit": limit,
-            "dutyStart": start,
-            "dutyEnd": end
-        ]) { error in
-            if error == nil {
-                DispatchQueue.main.async {
-                    self.currentUser?.dailyLimit = limit
-                    self.currentUser?.dutyStart = start
-                    self.currentUser?.dutyEnd = end
+        // UPDATED: Now saves the doctor's specialty
+        func updateDoctorDuty(limit: Int, start: String, end: String, specialty: String) {
+            guard let uid = currentUser?.uid else { return }
+            
+            db.collection("users").document(uid).updateData([
+                "dailyLimit": limit,
+                "dutyStart": start,
+                "dutyEnd": end,
+                "specialty": specialty // Save to Firebase!
+            ]) { error in
+                if error == nil {
+                    DispatchQueue.main.async {
+                        self.currentUser?.dailyLimit = limit
+                        self.currentUser?.dutyStart = start
+                        self.currentUser?.dutyEnd = end
+                        self.currentUser?.specialty = specialty // Update local state
+                    }
                 }
             }
         }
-    }
     
     // MARK: - Appointment Logic (Fetching)
     
