@@ -1,6 +1,6 @@
 //
 //  PrescriptionScannerView.swift
-//  MediChainUITests
+//  MediChain
 //
 //  Created by mehedi hasan on 7/3/26.
 //
@@ -16,6 +16,11 @@ struct PrescriptionScannerView: View {
     
     // MUBIN'S ADDITION: Drives the Gemini AI loading animation
     @State private var isCleaningText = false
+    
+    // NEW: FDA Feature State Variables
+    @State private var fdaDetails: FDADrugDetail?
+    @State private var isFetchingFDA = false
+    @State private var searchedMedicineName: String = "" // Added this to hold the dynamic name!
     
     // The invisible "brain" for offline OCR
     let textRecognizer = TextRecognizer()
@@ -178,6 +183,22 @@ struct PrescriptionScannerView: View {
                             .padding(.horizontal, 24)
                             .padding(.top, 8)
                         }
+                        
+                        // NEW: FDA Official Information Card
+                        if isFetchingFDA {
+                            VStack {
+                                ProgressView("Fetching official FDA data...")
+                                    .padding()
+                            }
+                        } else if let details = fdaDetails {
+                            // Uses the dynamic medicine name instead of "Ibuprofen"
+                            FDAInfoCard(drugDetails: details, medicineName: searchedMedicineName)
+                                .padding(.horizontal, 24)
+                                .padding(.top, 16)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                        // END OF NEW FDA UI
+                        
                     }
                     .padding(.bottom, 40)
                 }
@@ -199,6 +220,7 @@ struct PrescriptionScannerView: View {
         withAnimation(.spring()) {
             isProcessing = true
             extractedText = ""
+            fdaDetails = nil // Reset the FDA card when a new scan starts
         }
         
         textRecognizer.recognizeText(from: image) { result in
@@ -209,32 +231,73 @@ struct PrescriptionScannerView: View {
         }
     }
     
-    // MARK: - Gemini AI Processing
+    // MARK: - Gemini AI & OpenFDA Processing
     private func cleanTextWithGemini() async {
-        // Turn on the loading spinner
+        // 1. Turn on the Gemini loading spinner
         await MainActor.run {
             withAnimation(.spring()) {
                 isCleaningText = true
+                fdaDetails = nil // Clear old FDA data just in case
             }
         }
         
         do {
-            // Send the messy text to Mubin's GeminiService
+            // 2. Send the messy text to Mubin's GeminiService
             let cleanData = try await GeminiService.shared.cleanPrescriptionText(rawText: extractedText)
             
-            // Update the UI with the beautiful, clean text!
+            // 3. Update the UI with the beautiful, clean text!
             await MainActor.run {
                 withAnimation(.spring()) {
                     extractedText = cleanData
                     isCleaningText = false
                 }
             }
+            
+            // NEW: Extract Medicine and Fetch FDA Data
+            await MainActor.run { isFetchingFDA = true }
+            
+            // 1. Find the medicine name from Gemini's output
+                        var medicineToSearch: String? = nil
+                        let lines = cleanData.components(separatedBy: .newlines)
+                        
+                        // Look for our new specific "Main Drug" line!
+                        if let drugLine = lines.first(where: { $0.contains("Main Drug:") }) {
+                            let extractedDrug = drugLine.replacingOccurrences(of: "🔍 Main Drug:", with: "")
+                                                        .replacingOccurrences(of: "Main Drug:", with: "")
+                                                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                            
+                            // If the AI didn't write NONE, we search for the drug!
+                            if !extractedDrug.lowercased().contains("none") && !extractedDrug.isEmpty {
+                                medicineToSearch = extractedDrug
+                            }
+                        }
+            
+            // 2. Fetch the data ONLY if we found a valid medicine
+            var fetchedDetails: FDADrugDetail? = nil
+            var searchedName = ""
+            
+            if let targetMed = medicineToSearch {
+                fetchedDetails = try? await OpenFDAService.shared.fetchDrugDetails(for: targetMed)
+                searchedName = targetMed
+            }
+            
+            // 3. Update the UI with the correct dynamic name!
+            await MainActor.run {
+                withAnimation(.spring()) {
+                    self.fdaDetails = fetchedDetails
+                    self.searchedMedicineName = searchedName.capitalized // Store the name for the UI card
+                    self.isFetchingFDA = false
+                }
+            }
+            // END OF DYNAMIC FDA FETCH
+            
         } catch {
             // If the internet drops or something fails, let the user know
             await MainActor.run {
                 withAnimation(.spring()) {
                     extractedText = "Error communicating with AI: \(error.localizedDescription)\n\nOriginal Text:\n\(extractedText)"
                     isCleaningText = false
+                    isFetchingFDA = false
                 }
             }
         }

@@ -35,6 +35,7 @@ class GeminiService {
         📅 Date: [Date]
         🩺 Diagnosis: [Symptoms/Concern]
         💊 Medications: [List of meds]
+        🔍 Main Drug: [Single primary drug name without dosage (e.g., Gabapentin). If no meds, write NONE]
         
         Do not include any conversational text, just return the clean medical record.
         
