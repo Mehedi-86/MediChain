@@ -329,6 +329,16 @@ class AuthViewModel: ObservableObject {
         db.collection("appointments").document(docId).delete() { _ in }
     }
     
+    // MARK: - Fetch Specific User Data
+    func fetchUserDetails(uid: String, completion: @escaping (MediUser?) -> Void) {
+        db.collection("users").document(uid).getDocument { snapshot, _ in
+            let user = try? snapshot?.data(as: MediUser.self)
+            DispatchQueue.main.async {
+                completion(user)
+            }
+        }
+    }
+    
     // MARK: - Helpers
     
     func formatDate(_ date: Date) -> String {

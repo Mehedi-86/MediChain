@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import PhotosUI // NEW: Required for the native image picker
+import PhotosUI
 
 struct DoctorDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -19,6 +19,9 @@ struct DoctorDashboardView: View {
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var profileImage: UIImage? = nil
     
+    // NEW: State for viewing a specific patient's profile
+    @State private var selectedPatientInfo: MediUser? = nil
+    
     @State private var dailyLimit: Int = 5
     @State private var dutyStart = Date()
     @State private var dutyEnd = Date().addingTimeInterval(3600 * 2)
@@ -28,13 +31,11 @@ struct DoctorDashboardView: View {
     // MARK: - Date-Based Pagination State
     @State private var currentPageIndex = 0
     
-    // Extracts only the unique days that actually have appointments, skipping empty days
     var uniqueDates: [Date] {
         let allDates = authViewModel.appointments.map { Calendar.current.startOfDay(for: $0.date) }
         return Array(Set(allDates)).sorted()
     }
     
-    // Filters the queue to only show patients for the currently selected date page
     var currentDayAppointments: [Appointment] {
         guard uniqueDates.indices.contains(currentPageIndex) else { return [] }
         let targetDate = uniqueDates[currentPageIndex]
@@ -58,7 +59,6 @@ struct DoctorDashboardView: View {
                         
                         // MARK: - Premium Profile Header
                         HStack(spacing: 15) {
-                            // NEW: Interactive Profile Picture Button
                             Button(action: {
                                 showProfileMenu = true
                             }) {
@@ -77,7 +77,6 @@ struct DoctorDashboardView: View {
                                         .shadow(color: .indigo.opacity(0.3), radius: 5, x: 0, y: 3)
                                 }
                             }
-                            // 1. The Menu (Confirmation Dialog)
                             .confirmationDialog("Profile Picture", isPresented: $showProfileMenu) {
                                 if profileImage != nil {
                                     Button("View profile picture") { showFullScreenProfile = true }
@@ -87,16 +86,13 @@ struct DoctorDashboardView: View {
                                 }
                                 Button("Cancel", role: .cancel) { }
                             }
-                            // 2. The iOS Gallery Picker
                             .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
-                            // 3. Process the selected photo and save to Cloud
                             .onChange(of: selectedPhotoItem) { newItem in
                                 Task {
                                     if let data = try? await newItem?.loadTransferable(type: Data.self),
                                        let uiImage = UIImage(data: data) {
                                         await MainActor.run {
                                             self.profileImage = uiImage
-                                            // Upload to Firebase Storage using the same function!
                                             authViewModel.uploadProfilePicture(imageData: data)
                                         }
                                     }
@@ -116,7 +112,7 @@ struct DoctorDashboardView: View {
                         .padding(.horizontal)
                         .padding(.top, 10)
                         
-                        // MARK: - NEW: My Info Section
+                        // MARK: - My Info Section
                         Button(action: {
                             showMyInfo = true
                         }) {
@@ -158,7 +154,6 @@ struct DoctorDashboardView: View {
                             
                             Divider()
                             
-
                             HStack {
                                 Text("Specialty")
                                     .foregroundColor(.secondary)
@@ -219,7 +214,6 @@ struct DoctorDashboardView: View {
                         // MARK: - Smart Patient Queue Feed
                         VStack(alignment: .leading, spacing: 15) {
                             HStack {
-                                // Dynamic Title based on the viewed date
                                 if uniqueDates.indices.contains(currentPageIndex) {
                                     let viewedDate = uniqueDates[currentPageIndex]
                                     if Calendar.current.isDateInToday(viewedDate) {
@@ -258,9 +252,16 @@ struct DoctorDashboardView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 30)
                             } else {
+                                // CHANGED: We now pass an action to trigger the fetch!
                                 ForEach(currentDayAppointments) { appt in
-                                    PatientQueueCardView(appointment: appt)
-                                        .padding(.horizontal)
+                                    PatientQueueCardView(appointment: appt) {
+                                        // 1. Ask ViewModel to fetch the specific patient's profile
+                                        authViewModel.fetchUserDetails(uid: appt.patientId) { fetchedUser in
+                                            // 2. Set the state so the sheet opens
+                                            self.selectedPatientInfo = fetchedUser
+                                        }
+                                    }
+                                    .padding(.horizontal)
                                 }
                                 
                                 // MARK: - Date Pagination Controls
@@ -315,7 +316,6 @@ struct DoctorDashboardView: View {
                 if let savedLimit = authViewModel.currentUser?.dailyLimit {
                     self.dailyLimit = savedLimit
                 }
-                // Load the saved specialty
                 if let savedSpecialty = authViewModel.currentUser?.specialty {
                     self.selectedSpecialty = savedSpecialty
                 }
@@ -325,16 +325,18 @@ struct DoctorDashboardView: View {
                 
                 authViewModel.fetchDoctorAppointments()
             }
-            // Safely adjusts the page index if a date is removed (e.g. appointment canceled)
             .onChange(of: uniqueDates) { newDates in
                 if currentPageIndex >= newDates.count {
                     currentPageIndex = max(0, newDates.count - 1)
                 }
             }
-            // Add the sheet for MyInfoView
             .sheet(isPresented: $showMyInfo) {
                 MyInfoView()
                     .environmentObject(authViewModel)
+            }
+            // NEW: The Sheet that shows the specific patient's data!
+            .sheet(item: $selectedPatientInfo) { patient in
+                PatientDetailView(patient: patient)
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -347,7 +349,6 @@ struct DoctorDashboardView: View {
             }
         }
         .navigationViewStyle(.stack)
-        // MARK: - Full Screen Profile Picture Viewer
         .fullScreenCover(isPresented: $showFullScreenProfile) {
             if let image = profileImage {
                 ZStack {
@@ -365,7 +366,7 @@ struct DoctorDashboardView: View {
                         }
                         Spacer()
                     }
-                    .zIndex(1) // Ensures the X button stays on top
+                    .zIndex(1)
                     
                     Image(uiImage: image)
                         .resizable()
@@ -380,6 +381,7 @@ struct DoctorDashboardView: View {
 // MARK: - Custom Patient Queue Card UI
 struct PatientQueueCardView: View {
     var appointment: Appointment
+    var onViewProfile: () -> Void // NEW: Expects an action for the button
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -446,6 +448,22 @@ struct PatientQueueCardView: View {
                         .lineLimit(1)
                 }
             }
+            
+            // NEW: The View Patient Info Button at the bottom of the card
+            Button(action: onViewProfile) {
+                HStack {
+                    Image(systemName: "person.text.rectangle")
+                    Text("View Patient Profile")
+                }
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.indigo)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.indigo.opacity(0.1))
+                .cornerRadius(10)
+            }
+            .padding(.top, 4)
         }
         .padding()
         .background(Color(UIColor.secondarySystemGroupedBackground))
