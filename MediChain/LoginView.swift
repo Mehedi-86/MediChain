@@ -13,15 +13,20 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var fullName = ""
+    @State private var region = "" // NEW: Region state variable
     @State private var isLoginMode = true
     @State private var selectedRole: UserRole = .patient
     
-    // Form Validation Logic
+    // Form Validation Logic Updated to include Region for Doctors
     var isFormValid: Bool {
         if isLoginMode {
             return !email.isEmpty && !password.isEmpty
         } else {
-            return !email.isEmpty && !password.isEmpty && !fullName.isEmpty
+            if selectedRole == .doctor {
+                return !email.isEmpty && !password.isEmpty && !fullName.isEmpty && !region.isEmpty
+            } else {
+                return !email.isEmpty && !password.isEmpty && !fullName.isEmpty
+            }
         }
     }
     
@@ -86,15 +91,26 @@ struct LoginView: View {
                         
                         // Custom Password Field
                         CustomSecureField(icon: "lock.fill", placeholder: "Password", text: $password)
+                        
+                        // MARK: - NEW: Region Field (Only for Doctors creating an account)
+                        if !isLoginMode && selectedRole == .doctor {
+                            CustomTextField(icon: "mappin.and.ellipse", placeholder: "Region (e.g., Khulna, Bangladesh)", text: $region)
+                                .transition(.move(edge: .top).combined(with: .opacity)) // Smooth slide-in
+                        }
                     }
                     .padding(.horizontal)
+                    .animation(.easeInOut, value: selectedRole) // Animates the region field appearing/disappearing
                     
                     // MARK: - Action Button
                     Button(action: {
                         if isLoginMode {
                             authViewModel.signIn(email: email, password: password)
                         } else {
-                            authViewModel.signUp(email: email, password: password, fullName: fullName, role: selectedRole)
+                            // TODO: Azrof needs to update the signUp function in AuthViewModel
+                            // to accept the new 'region' parameter!
+                            // Example: authViewModel.signUp(email: email, password: password, fullName: fullName, role: selectedRole, region: region)
+                            
+                            authViewModel.signUp(email: email, password: password, fullName: fullName, role: selectedRole, region: region)
                         }
                     }) {
                         Text(isLoginMode ? "Sign In" : "Create Account")
@@ -113,7 +129,7 @@ struct LoginView: View {
                     
                     Spacer()
                 }
-                .animation(.easeInOut, value: isLoginMode) // Animates the layout changes
+                .animation(.easeInOut, value: isLoginMode) // Animates the layout changes for Login vs Create
             }
         }
     }

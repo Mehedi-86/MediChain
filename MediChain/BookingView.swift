@@ -15,9 +15,32 @@ struct BookingView: View {
     @State private var selectedDoctor: MediUser?
     @State private var notes = ""
     
-    // NEW: Alert State Variables
+    // NEW: Region Filter State
+    @State private var selectedRegion: String = "All Regions"
+    
+    // Alert State Variables
     @State private var showAlert = false
     @State private var alertMessage = ""
+    
+    // MARK: - Computed Properties for Filtering
+    
+    // 1. Extracts unique regions from the currently available doctors
+    var availableRegions: [String] {
+        var regions = ["All Regions"]
+        // Get all regions, remove nils, remove empties, and remove duplicates using Set
+        let docRegions = Set(authViewModel.availableDoctors.compactMap { $0.region }.filter { !$0.isEmpty })
+        regions.append(contentsOf: docRegions.sorted())
+        return regions
+    }
+    
+    // 2. Filters the doctor list based on the selected region
+    var filteredDoctors: [MediUser] {
+        if selectedRegion == "All Regions" {
+            return authViewModel.availableDoctors
+        } else {
+            return authViewModel.availableDoctors.filter { $0.region == selectedRegion }
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -25,22 +48,42 @@ struct BookingView: View {
                 Section(header: Text("Select Visit Date")) {
                     DatePicker("Appointment Date", selection: $selectedDate, in: Date()..., displayedComponents: .date)
                         .onChange(of: selectedDate) { newDate in
+                            // Reset everything when the date changes
                             selectedDoctor = nil
+                            selectedRegion = "All Regions"
                             authViewModel.fetchAvailableDoctors(for: newDate)
                         }
-                        .disabled(selectedDoctor != nil)
+                        .disabled(selectedDoctor != nil) // Prevent changing date if doctor is already picked
+                }
+                
+                // MARK: - NEW: Region Filter Section
+                // Only show the region filter if there are actually doctors available on this date
+                if !authViewModel.availableDoctors.isEmpty {
+                    Section(header: Text("Filter by Region")) {
+                        Picker("Region", selection: $selectedRegion) {
+                            ForEach(availableRegions, id: \.self) { region in
+                                Text(region).tag(region)
+                            }
+                        }
+                        .onChange(of: selectedRegion) { _ in
+                            // If the user changes the region, reset their selected doctor
+                            selectedDoctor = nil
+                        }
+                    }
                 }
                 
                 Section(header: Text("Select Available Doctor")) {
-                    if authViewModel.availableDoctors.isEmpty {
-                        Text("No doctors available for this date.")
+                    if filteredDoctors.isEmpty {
+                        // Dynamic empty message
+                        Text(authViewModel.availableDoctors.isEmpty ? "No doctors available for this date." : "No doctors available in this region.")
                             .foregroundColor(.gray)
                     } else {
+                        // Uses the FILTERED doctors array instead of the main one
                         Picker("Doctor", selection: $selectedDoctor) {
                             Text("Select a Doctor").tag(nil as MediUser?)
                             
-                            ForEach(authViewModel.availableDoctors, id: \.self) { doctor in
-                                                            
+                            ForEach(filteredDoctors, id: \.self) { doctor in
+                                                                               
                                 let rawName = doctor.fullName ?? doctor.email.components(separatedBy: "@").first?.capitalized ?? "Doctor"
                                 let specialty = doctor.specialty ?? "General Physician"
                                 

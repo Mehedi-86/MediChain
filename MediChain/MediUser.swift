@@ -23,4 +23,5 @@ struct MediUser: Codable, Identifiable, Hashable {
     var dutyEnd: String?
     var dailyLimit: Int?
     var specialty: String?
+    var region: String?
 }

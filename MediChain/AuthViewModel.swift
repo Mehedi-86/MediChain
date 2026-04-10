@@ -21,8 +21,8 @@ class AuthViewModel: ObservableObject {
     
     // MARK: - Authentication
     
-    // UPDATED: Now requires fullName during sign up
-    func signUp(email: String, password: String, fullName: String, role: UserRole) {
+    // UPDATED: Now requires fullName AND region during sign up
+    func signUp(email: String, password: String, fullName: String, role: UserRole, region: String) {
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("❌ Auth Error: \(error.localizedDescription)")
@@ -31,8 +31,9 @@ class AuthViewModel: ObservableObject {
             
             guard let uid = result?.user.uid else { return }
             
-            // Save fullName to the database
-            let newUser = MediUser(uid: uid, email: email, fullName: fullName, role: role, dutyStart: "18:00", dutyEnd: "20:00", dailyLimit: 5)
+            // Save fullName and region to the database
+            // NOTE: If the user is a patient, region will just be an empty string ""
+            let newUser = MediUser(uid: uid, email: email, fullName: fullName, role: role, dutyStart: "18:00", dutyEnd: "20:00", dailyLimit: 5, region: region)
             
             try? self.db.collection("users").document(uid).setData(from: newUser) { error in
                 if error == nil {
@@ -88,8 +89,6 @@ class AuthViewModel: ObservableObject {
                 }
             }
         }
-    
-    // MARK: - Appointment Logic (Fetching)
     
     // MARK: - Appointment Logic (Fetching)
         
