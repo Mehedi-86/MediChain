@@ -24,4 +24,7 @@ struct MediUser: Codable, Identifiable, Hashable {
     var dailyLimit: Int?
     var specialty: String?
     var region: String?
+    var bloodGroup: String?
+    var age: String?
+    var weight: String?
 }

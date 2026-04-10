@@ -66,6 +66,29 @@ class AuthViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Update Patient Info
+        // UPDATED: Now includes fullName
+        func updatePatientInfo(fullName: String, bloodGroup: String, age: String, weight: String) {
+            guard let uid = currentUser?.uid else { return }
+            
+            db.collection("users").document(uid).updateData([
+                "fullName": fullName,
+                "bloodGroup": bloodGroup,
+                "age": age,
+                "weight": weight
+            ]) { error in
+                if error == nil {
+                    DispatchQueue.main.async {
+                        self.currentUser?.fullName = fullName // Update the local state!
+                        self.currentUser?.bloodGroup = bloodGroup
+                        self.currentUser?.age = age
+                        self.currentUser?.weight = weight
+                    }
+                } else {
+                    print("❌ Error updating info: \(error!.localizedDescription)")
+                }
+            }
+        }
     
     // MARK: - Doctor Duty Management
         

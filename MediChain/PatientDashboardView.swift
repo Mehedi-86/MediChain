@@ -11,6 +11,7 @@ struct PatientDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showBookingSheet = false
     @State private var showScannerSheet = false
+    @State private var showMyInfo = false
     
     // STEP 1: Add the State Variable for the digital wallet
     @State private var showDigitalWallet = false
@@ -91,6 +92,37 @@ struct PatientDashboardView: View {
                             }
                             
                             ActionButton(title: "Health Report", icon: "arrow.up.doc.fill", color: .purple)
+                        }
+                        .padding(.horizontal)
+                        
+                        // MARK: - My Info Section
+                        Button(action: {
+                            showMyInfo = true
+                        }) {
+                            HStack {
+                                Image(systemName: "person.text.rectangle")
+                                    .font(.title2)
+                                    .foregroundColor(.orange)
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.orange.opacity(0.15))
+                                    .clipShape(Circle())
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("My Medical Info")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("View and update your personal details")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
                         }
                         .padding(.horizontal)
                         
@@ -203,6 +235,11 @@ struct PatientDashboardView: View {
             }
             .sheet(isPresented: $showBookingSheet) {
                 BookingView()
+                    .environmentObject(authViewModel)
+            }
+            
+            .sheet(isPresented: $showMyInfo) {
+                MyInfoView()
                     .environmentObject(authViewModel)
             }
             .sheet(isPresented: $showScannerSheet) {
