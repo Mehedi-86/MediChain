@@ -22,6 +22,14 @@ struct PrescriptionScannerView: View {
     @State private var isFetchingFDA = false
     @State private var searchedMedicineName: String = "" // Added this to hold the dynamic name!
     
+    // NEW: Healthfinder State Variables
+    @State private var extractedDiagnosis: String = ""
+    @State private var manualSearchKeyword: String = ""
+    @State private var isShowingHealthTips = false
+    
+    // NEW: PDF Export State Variable
+    @State private var pdfURL: URL?
+    
     // The invisible "brain" for offline OCR
     let textRecognizer = TextRecognizer()
     
@@ -150,7 +158,7 @@ struct PrescriptionScannerView: View {
                             .transition(.opacity.combined(with: .move(edge: .bottom))) // Smooth entrance
                         }
                         
-                        // MARK: - Gemini AI Button (Replaces Old Save Button)
+                        // MARK: - Gemini AI Button
                         if !extractedText.isEmpty && !isProcessing {
                             Button(action: {
                                 Task {
@@ -184,20 +192,131 @@ struct PrescriptionScannerView: View {
                             .padding(.top, 8)
                         }
                         
-                        // NEW: FDA Official Information Card
+                        // MARK: - FDA Official Information Card
                         if isFetchingFDA {
                             VStack {
                                 ProgressView("Fetching official FDA data...")
                                     .padding()
                             }
                         } else if let details = fdaDetails {
-                            // Uses the dynamic medicine name instead of "Ibuprofen"
                             FDAInfoCard(drugDetails: details, medicineName: searchedMedicineName)
                                 .padding(.horizontal, 24)
                                 .padding(.top, 16)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
-                        // END OF NEW FDA UI
+                        
+                        // MARK: - Healthfinder Search Box & Button
+                        if !extractedText.isEmpty && !isProcessing {
+                            VStack(spacing: 12) {
+                                Text("Search Health Tips")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 28)
+                                
+                                // 1. The Editable Text Box
+                                HStack {
+                                    Image(systemName: "magnifyingglass")
+                                        .foregroundColor(.gray)
+                                    TextField("Enter condition (e.g., Diabetes)", text: $manualSearchKeyword)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    
+                                    // Clear button if text isn't empty
+                                    if !manualSearchKeyword.isEmpty {
+                                        Button(action: { manualSearchKeyword = "" }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.gray.opacity(0.5))
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(Color(UIColor.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
+                                .padding(.horizontal, 24)
+                                
+                                // 2. The Search Button
+                                Button(action: {
+                                    isShowingHealthTips = true
+                                }) {
+                                    HStack {
+                                        Image(systemName: "heart.text.square.fill")
+                                            .font(.title2)
+                                        Text(manualSearchKeyword.isEmpty ? "Search Prevention Tips" : "Tips for \(manualSearchKeyword)")
+                                            .font(.headline)
+                                            .fontWeight(.bold)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(
+                                        LinearGradient(
+                                            colors: manualSearchKeyword.isEmpty ? [.gray, .gray.opacity(0.8)] : [.green, .mint],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .foregroundColor(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .shadow(color: manualSearchKeyword.isEmpty ? .clear : .green.opacity(0.3), radius: 8, x: 0, y: 4)
+                                }
+                                .disabled(manualSearchKeyword.isEmpty) // Prevent empty searches
+                                .padding(.horizontal, 24)
+                            }
+                            .padding(.top, 8)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                        
+                        // MARK: - Export PDF Button
+                        if !extractedText.isEmpty && !isProcessing {
+                            Button(action: {
+                                // Generate the PDF on the main thread
+                                Task {
+                                    @MainActor in
+                                    self.pdfURL = PDFGenerator.generateReport(
+                                        extractedText: extractedText,
+                                        fdaDetails: fdaDetails,
+                                        medicineName: searchedMedicineName
+                                    )
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "square.and.arrow.up")
+                                    Text("Generate PDF Report")
+                                        .fontWeight(.bold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.white)
+                                .foregroundColor(.blue)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.blue, lineWidth: 2)
+                                )
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 8)
+                            
+                            // If the PDF is ready, show the iOS Share Link automatically
+                            if let validURL = pdfURL {
+                                ShareLink(item: validURL, message: Text("Here is my medical report from MediChain.")) {
+                                    Label("Tap here to Share / Save PDF", systemImage: "doc.text.fill")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 16)
+                                        .background(Color.blue)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.top, 8)
+                            }
+                        }
                         
                     }
                     .padding(.bottom, 40)
@@ -206,6 +325,9 @@ struct PrescriptionScannerView: View {
             .navigationBarHidden(true)
             .sheet(isPresented: $isShowingScanner) {
                 ScannerView(scannedImages: $scannedImages)
+            }
+            .sheet(isPresented: $isShowingHealthTips) {
+                PreventionTipsView(keyword: manualSearchKeyword)
             }
             .onChange(of: scannedImages) { newImages in
                 guard let firstImage = newImages.first else { return }
@@ -221,6 +343,9 @@ struct PrescriptionScannerView: View {
             isProcessing = true
             extractedText = ""
             fdaDetails = nil // Reset the FDA card when a new scan starts
+            extractedDiagnosis = "" // Reset diagnosis when new scan starts
+            manualSearchKeyword = "" // Reset manual search when new scan starts
+            pdfURL = nil // Reset the PDF url so it doesn't share the old one
         }
         
         textRecognizer.recognizeText(from: image) { result in
@@ -238,11 +363,14 @@ struct PrescriptionScannerView: View {
             withAnimation(.spring()) {
                 isCleaningText = true
                 fdaDetails = nil // Clear old FDA data just in case
+                extractedDiagnosis = "" // Clear old diagnosis data
+                manualSearchKeyword = "" // Clear old keyword
+                pdfURL = nil // Clear old PDF
             }
         }
         
         do {
-            // 2. Send the messy text to Mubin's GeminiService
+            // 2. Send the messy text to GeminiService
             let cleanData = try await GeminiService.shared.cleanPrescriptionText(rawText: extractedText)
             
             // 3. Update the UI with the beautiful, clean text!
@@ -253,26 +381,46 @@ struct PrescriptionScannerView: View {
                 }
             }
             
-            // NEW: Extract Medicine and Fetch FDA Data
+            // Extract Medicine and Fetch FDA Data
             await MainActor.run { isFetchingFDA = true }
             
-            // 1. Find the medicine name from Gemini's output
-                        var medicineToSearch: String? = nil
-                        let lines = cleanData.components(separatedBy: .newlines)
-                        
-                        // Look for our new specific "Main Drug" line!
-                        if let drugLine = lines.first(where: { $0.contains("Main Drug:") }) {
-                            let extractedDrug = drugLine.replacingOccurrences(of: "🔍 Main Drug:", with: "")
-                                                        .replacingOccurrences(of: "Main Drug:", with: "")
-                                                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                            
-                            // If the AI didn't write NONE, we search for the drug!
-                            if !extractedDrug.lowercased().contains("none") && !extractedDrug.isEmpty {
-                                medicineToSearch = extractedDrug
-                            }
-                        }
+            // Find the medicine name and diagnosis from Gemini's output
+            var medicineToSearch: String? = nil
+            let lines = cleanData.components(separatedBy: .newlines)
             
-            // 2. Fetch the data ONLY if we found a valid medicine
+            // Look for our specific "Main Drug" line
+            if let drugLine = lines.first(where: { $0.contains("Main Drug:") }) {
+                let extractedDrug = drugLine.replacingOccurrences(of: "🔍 Main Drug:", with: "")
+                                            .replacingOccurrences(of: "Main Drug:", with: "")
+                                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // If the AI didn't write NONE, we search for the drug!
+                if !extractedDrug.lowercased().contains("none") && !extractedDrug.isEmpty {
+                    medicineToSearch = extractedDrug
+                }
+            }
+            
+            // Look for our specific "Diagnosis" line
+            if let diagnosisLine = lines.first(where: { $0.contains("Diagnosis:") }) {
+                let cleanDiagnosis = diagnosisLine.replacingOccurrences(of: "🩺 Diagnosis:", with: "")
+                                                  .replacingOccurrences(of: "Diagnosis:", with: "")
+                                                  .trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if !cleanDiagnosis.lowercased().contains("none") && !cleanDiagnosis.isEmpty {
+                    // Extracting the first main condition word
+                    let mainWord = cleanDiagnosis.components(separatedBy: ",").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "health"
+                    
+                    await MainActor.run {
+                        withAnimation(.spring()) {
+                            self.extractedDiagnosis = mainWord
+                            // Pre-fill the text box automatically!
+                            self.manualSearchKeyword = mainWord
+                        }
+                    }
+                }
+            }
+            
+            // Fetch the data ONLY if we found a valid medicine
             var fetchedDetails: FDADrugDetail? = nil
             var searchedName = ""
             
@@ -281,7 +429,7 @@ struct PrescriptionScannerView: View {
                 searchedName = targetMed
             }
             
-            // 3. Update the UI with the correct dynamic name!
+            // Update the UI with the correct dynamic name!
             await MainActor.run {
                 withAnimation(.spring()) {
                     self.fdaDetails = fetchedDetails
@@ -289,13 +437,20 @@ struct PrescriptionScannerView: View {
                     self.isFetchingFDA = false
                 }
             }
-            // END OF DYNAMIC FDA FETCH
             
         } catch {
             // If the internet drops or something fails, let the user know
             await MainActor.run {
                 withAnimation(.spring()) {
-                    extractedText = "Error communicating with AI: \(error.localizedDescription)\n\nOriginal Text:\n\(extractedText)"
+                    // Check if it's a rate limit/quota error (429)
+                    let errorText = error.localizedDescription
+                    if errorText.contains("429") || errorText.contains("Resource Exhausted") || errorText.contains("error 1") {
+                        extractedText = "Whoa, slow down! 🚦\n\nThe AI is processing too many requests at once. Please wait about 10 seconds and tap 'Clean with Gemini AI' again.\n\n---\nOriginal Text:\n\(extractedText)"
+                    } else {
+                        // Standard error fallback
+                        extractedText = "Error communicating with AI: \(errorText)\n\nOriginal Text:\n\(extractedText)"
+                    }
+                    
                     isCleaningText = false
                     isFetchingFDA = false
                 }

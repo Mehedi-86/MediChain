@@ -16,3 +16,4 @@ MediChain/GoogleService-Info.plist
 .build/Config.xcconfig
 MediChain/Config.xcconfig
 *.xcconfig
+APIKeys.swift
