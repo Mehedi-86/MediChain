@@ -6,9 +6,18 @@
 //
 
 import SwiftUI
+import PhotosUI // NEW: Required for the native image picker
 
 struct DoctorDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    
+    // MARK: - My Info & Profile State
+    @State private var showMyInfo = false
+    @State private var showProfileMenu = false
+    @State private var showPhotoPicker = false
+    @State private var showFullScreenProfile = false
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var profileImage: UIImage? = nil
     
     @State private var dailyLimit: Int = 5
     @State private var dutyStart = Date()
@@ -49,11 +58,50 @@ struct DoctorDashboardView: View {
                         
                         // MARK: - Premium Profile Header
                         HStack(spacing: 15) {
-                            Image(systemName: "stethoscope.circle.fill")
-                                .resizable()
-                                .frame(width: 60, height: 60)
-                                .foregroundColor(.indigo)
-                                .shadow(color: .indigo.opacity(0.3), radius: 5, x: 0, y: 3)
+                            // NEW: Interactive Profile Picture Button
+                            Button(action: {
+                                showProfileMenu = true
+                            }) {
+                                if let image = profileImage {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(Circle())
+                                        .shadow(color: .indigo.opacity(0.3), radius: 5, x: 0, y: 3)
+                                } else {
+                                    Image(systemName: "stethoscope.circle.fill")
+                                        .resizable()
+                                        .frame(width: 60, height: 60)
+                                        .foregroundColor(.indigo)
+                                        .shadow(color: .indigo.opacity(0.3), radius: 5, x: 0, y: 3)
+                                }
+                            }
+                            // 1. The Menu (Confirmation Dialog)
+                            .confirmationDialog("Profile Picture", isPresented: $showProfileMenu) {
+                                if profileImage != nil {
+                                    Button("View profile picture") { showFullScreenProfile = true }
+                                    Button("Set a profile picture") { showPhotoPicker = true }
+                                } else {
+                                    Button("Set a profile picture") { showPhotoPicker = true }
+                                }
+                                Button("Cancel", role: .cancel) { }
+                            }
+                            // 2. The iOS Gallery Picker
+                            .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
+                            // 3. Process the selected photo and save to Cloud
+                            .onChange(of: selectedPhotoItem) { newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                       let uiImage = UIImage(data: data) {
+                                        await MainActor.run {
+                                            self.profileImage = uiImage
+                                            // Upload to Firebase Storage using the same function!
+                                            authViewModel.uploadProfilePicture(imageData: data)
+                                        }
+                                    }
+                                }
+                            }
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Welcome back,")
@@ -67,6 +115,37 @@ struct DoctorDashboardView: View {
                         }
                         .padding(.horizontal)
                         .padding(.top, 10)
+                        
+                        // MARK: - NEW: My Info Section
+                        Button(action: {
+                            showMyInfo = true
+                        }) {
+                            HStack {
+                                Image(systemName: "person.text.rectangle")
+                                    .font(.title2)
+                                    .foregroundColor(.orange)
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.orange.opacity(0.15))
+                                    .clipShape(Circle())
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("My Personal Info")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("View and update your personal details")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(UIColor.secondarySystemGroupedBackground))
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
+                        }
+                        .padding(.horizontal)
                         
                         // MARK: - Duty Settings Card
                         VStack(alignment: .leading, spacing: 16) {
@@ -119,7 +198,6 @@ struct DoctorDashboardView: View {
                             Button(action: {
                                 let startString = timeFormatter.string(from: dutyStart)
                                 let endString = timeFormatter.string(from: dutyEnd)
-                                // UPDATED: Pass the specialty!
                                 authViewModel.updateDoctorDuty(limit: dailyLimit, start: startString, end: endString, specialty: selectedSpecialty)
                             }) {
                                 Text("Save Duty Settings")
@@ -237,7 +315,7 @@ struct DoctorDashboardView: View {
                 if let savedLimit = authViewModel.currentUser?.dailyLimit {
                     self.dailyLimit = savedLimit
                 }
-                // NEW: Load the saved specialty
+                // Load the saved specialty
                 if let savedSpecialty = authViewModel.currentUser?.specialty {
                     self.selectedSpecialty = savedSpecialty
                 }
@@ -253,6 +331,11 @@ struct DoctorDashboardView: View {
                     currentPageIndex = max(0, newDates.count - 1)
                 }
             }
+            // Add the sheet for MyInfoView
+            .sheet(isPresented: $showMyInfo) {
+                MyInfoView()
+                    .environmentObject(authViewModel)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { authViewModel.signOut() }) {
@@ -264,6 +347,33 @@ struct DoctorDashboardView: View {
             }
         }
         .navigationViewStyle(.stack)
+        // MARK: - Full Screen Profile Picture Viewer
+        .fullScreenCover(isPresented: $showFullScreenProfile) {
+            if let image = profileImage {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: { showFullScreenProfile = false }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .padding()
+                            }
+                        }
+                        Spacer()
+                    }
+                    .zIndex(1) // Ensures the X button stays on top
+                    
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .ignoresSafeArea()
+                }
+            }
+        }
     }
 }
 
