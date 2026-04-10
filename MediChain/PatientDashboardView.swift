@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI // NEW: Required for the native image picker
 
 struct PatientDashboardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -15,6 +16,13 @@ struct PatientDashboardView: View {
     
     // STEP 1: Add the State Variable for the digital wallet
     @State private var showDigitalWallet = false
+    
+    // MARK: - Profile Picture State
+    @State private var showProfileMenu = false
+    @State private var showPhotoPicker = false
+    @State private var showFullScreenProfile = false
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var profileImage: UIImage? = nil
     
     // MARK: - Pagination State
     @State private var currentPage = 0
@@ -51,11 +59,54 @@ struct PatientDashboardView: View {
                         
                         // MARK: - Premium Profile Header
                         HStack(spacing: 15) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .resizable()
-                                .frame(width: 60, height: 60)
-                                .foregroundColor(.blue)
-                                .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 3)
+                            
+                            // NEW: Interactive Profile Picture Button
+                            Button(action: {
+                                showProfileMenu = true
+                            }) {
+                                if let image = profileImage {
+                                    // Shows the selected image
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(Circle())
+                                        .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 3)
+                                } else {
+                                    // Shows the default empty icon
+                                    Image(systemName: "person.crop.circle.fill")
+                                        .resizable()
+                                        .frame(width: 60, height: 60)
+                                        .foregroundColor(.blue)
+                                        .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 3)
+                                }
+                            }
+                            // 1. The Menu (Confirmation Dialog)
+                            .confirmationDialog("Profile Picture", isPresented: $showProfileMenu) {
+                                if profileImage != nil {
+                                    Button("View profile picture") { showFullScreenProfile = true }
+                                    // Keeps it as "Set a profile picture" even when changing it, as requested
+                                    Button("Set a profile picture") { showPhotoPicker = true }
+                                } else {
+                                    Button("Set a profile picture") { showPhotoPicker = true }
+                                }
+                                Button("Cancel", role: .cancel) { }
+                            }
+                            // 2. The iOS Gallery Picker
+                            .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
+                            // 3. Process the selected photo
+                            .onChange(of: selectedPhotoItem) { newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                       let uiImage = UIImage(data: data) {
+                                        await MainActor.run {
+                                            self.profileImage = uiImage
+                                            // Triggers the background cloud upload!
+                                            authViewModel.uploadProfilePicture(imageData: data)
+                                        }
+                                    }
+                                }
+                            }
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Welcome back,")
@@ -67,7 +118,7 @@ struct PatientDashboardView: View {
                             }
                             Spacer()
                             
-                            // STEP 2: The new QR Code Button
+                            // STEP 2: The QR Code Button
                             Button(action: {
                                 showDigitalWallet = true
                             }) {
@@ -237,7 +288,6 @@ struct PatientDashboardView: View {
                 BookingView()
                     .environmentObject(authViewModel)
             }
-            
             .sheet(isPresented: $showMyInfo) {
                 MyInfoView()
                     .environmentObject(authViewModel)
@@ -245,7 +295,6 @@ struct PatientDashboardView: View {
             .sheet(isPresented: $showScannerSheet) {
                 PrescriptionScannerView()
             }
-            // STEP 3: Attach the Sheet for the Digital Wallet
             .sheet(isPresented: $showDigitalWallet) {
                 DigitalWalletView()
                     .environmentObject(authViewModel)
@@ -261,6 +310,33 @@ struct PatientDashboardView: View {
             }
         }
         .navigationViewStyle(.stack)
+        // MARK: - Full Screen Profile Picture Viewer
+        .fullScreenCover(isPresented: $showFullScreenProfile) {
+            if let image = profileImage {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: { showFullScreenProfile = false }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .padding()
+                            }
+                        }
+                        Spacer()
+                    }
+                    .zIndex(1) // Ensures the X button stays on top
+                    
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .ignoresSafeArea()
+                }
+            }
+        }
     }
 }
 

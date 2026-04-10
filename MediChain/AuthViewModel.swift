@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseStorage // NEW: Required to save the actual image file to the cloud
 import Combine
 
 class AuthViewModel: ObservableObject {
@@ -67,87 +68,121 @@ class AuthViewModel: ObservableObject {
     }
     
     // MARK: - Update Patient Info
-        // UPDATED: Now includes fullName
-        func updatePatientInfo(fullName: String, bloodGroup: String, age: String, weight: String) {
-            guard let uid = currentUser?.uid else { return }
-            
-            db.collection("users").document(uid).updateData([
-                "fullName": fullName,
-                "bloodGroup": bloodGroup,
-                "age": age,
-                "weight": weight
-            ]) { error in
-                if error == nil {
-                    DispatchQueue.main.async {
-                        self.currentUser?.fullName = fullName // Update the local state!
-                        self.currentUser?.bloodGroup = bloodGroup
-                        self.currentUser?.age = age
-                        self.currentUser?.weight = weight
-                    }
-                } else {
-                    print("❌ Error updating info: \(error!.localizedDescription)")
+    // UPDATED: Now includes fullName
+    func updatePatientInfo(fullName: String, bloodGroup: String, age: String, weight: String) {
+        guard let uid = currentUser?.uid else { return }
+        
+        db.collection("users").document(uid).updateData([
+            "fullName": fullName,
+            "bloodGroup": bloodGroup,
+            "age": age,
+            "weight": weight
+        ]) { error in
+            if error == nil {
+                DispatchQueue.main.async {
+                    self.currentUser?.fullName = fullName // Update the local state!
+                    self.currentUser?.bloodGroup = bloodGroup
+                    self.currentUser?.age = age
+                    self.currentUser?.weight = weight
                 }
+            } else {
+                print("❌ Error updating info: \(error!.localizedDescription)")
             }
         }
+    }
     
-    // MARK: - Doctor Duty Management
+    // MARK: - Profile Picture Upload
+    func uploadProfilePicture(imageData: Data) {
+        guard let uid = currentUser?.uid else { return }
         
-        // UPDATED: Now saves the doctor's specialty
-        func updateDoctorDuty(limit: Int, start: String, end: String, specialty: String) {
-            guard let uid = currentUser?.uid else { return }
-            
-            db.collection("users").document(uid).updateData([
-                "dailyLimit": limit,
-                "dutyStart": start,
-                "dutyEnd": end,
-                "specialty": specialty // Save to Firebase!
-            ]) { error in
-                if error == nil {
-                    DispatchQueue.main.async {
-                        self.currentUser?.dailyLimit = limit
-                        self.currentUser?.dutyStart = start
-                        self.currentUser?.dutyEnd = end
-                        self.currentUser?.specialty = specialty // Update local state
-                    }
-                }
+        // 1. The Secret: Name the file the exact same thing every time (their UID)
+        let storageRef = Storage.storage().reference()
+        let fileRef = storageRef.child("profile_pictures/\(uid).jpg")
+        
+        // 2. Upload the new data (this instantly overwrites any old photo!)
+        fileRef.putData(imageData, metadata: nil) { metadata, error in
+            if let error = error {
+                print("❌ Upload error: \(error.localizedDescription)")
+                return
             }
-        }
-    
-    // MARK: - Appointment Logic (Fetching)
-        
-        func fetchDoctorAppointments() {
-            guard let doctorId = currentUser?.uid else { return }
             
-            db.collection("appointments")
-                .whereField("doctorId", isEqualTo: doctorId)
-                .addSnapshotListener { snapshot, error in
-                    if let error = error {
-                        print("❌ Fetch Error: \(error.localizedDescription)")
-                        return
-                    }
-                    
-                    self.appointments = snapshot?.documents.compactMap { doc in
-                        try? doc.data(as: Appointment.self)
-                    } ?? []
-                    
-                    DispatchQueue.main.async {
-                        // THE FIX: Two-step sorting logic
-                        self.appointments.sort { appt1, appt2 in
-                            // 1. Strip away the exact hours/minutes to compare just the calendar day
-                            let day1 = Calendar.current.startOfDay(for: appt1.date)
-                            let day2 = Calendar.current.startOfDay(for: appt2.date)
-                            
-                            if day1 == day2 {
-                                // 2. If it's the same day, sort by Serial Number
-                                return (appt1.serialNumber ?? 0) < (appt2.serialNumber ?? 0)
-                            }
-                            
-                            // Otherwise, sort by the date
-                            return day1 < day2
+            // 3. Grab the secure download link
+            fileRef.downloadURL { url, error in
+                guard let downloadURL = url?.absoluteString else { return }
+                
+                // 4. Save that link to the user's Firestore document
+                self.db.collection("users").document(uid).updateData([
+                    "profileImageUrl": downloadURL
+                ]) { error in
+                    if error == nil {
+                        print("✅ Profile picture secured in the cloud!")
+                        DispatchQueue.main.async {
+                            self.currentUser?.profileImageUrl = downloadURL
                         }
                     }
                 }
+            }
         }
+    }
+    
+    // MARK: - Doctor Duty Management
+        
+    // UPDATED: Now saves the doctor's specialty
+    func updateDoctorDuty(limit: Int, start: String, end: String, specialty: String) {
+        guard let uid = currentUser?.uid else { return }
+        
+        db.collection("users").document(uid).updateData([
+            "dailyLimit": limit,
+            "dutyStart": start,
+            "dutyEnd": end,
+            "specialty": specialty // Save to Firebase!
+        ]) { error in
+            if error == nil {
+                DispatchQueue.main.async {
+                    self.currentUser?.dailyLimit = limit
+                    self.currentUser?.dutyStart = start
+                    self.currentUser?.dutyEnd = end
+                    self.currentUser?.specialty = specialty // Update local state
+                }
+            }
+        }
+    }
+    
+    // MARK: - Appointment Logic (Fetching)
+        
+    func fetchDoctorAppointments() {
+        guard let doctorId = currentUser?.uid else { return }
+        
+        db.collection("appointments")
+            .whereField("doctorId", isEqualTo: doctorId)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Fetch Error: \(error.localizedDescription)")
+                    return
+                }
+                
+                self.appointments = snapshot?.documents.compactMap { doc in
+                    try? doc.data(as: Appointment.self)
+                } ?? []
+                
+                DispatchQueue.main.async {
+                    // THE FIX: Two-step sorting logic
+                    self.appointments.sort { appt1, appt2 in
+                        // 1. Strip away the exact hours/minutes to compare just the calendar day
+                        let day1 = Calendar.current.startOfDay(for: appt1.date)
+                        let day2 = Calendar.current.startOfDay(for: appt2.date)
+                        
+                        if day1 == day2 {
+                            // 2. If it's the same day, sort by Serial Number
+                            return (appt1.serialNumber ?? 0) < (appt2.serialNumber ?? 0)
+                        }
+                        
+                        // Otherwise, sort by the date
+                        return day1 < day2
+                    }
+                }
+            }
+    }
 
     func fetchAvailableDoctors(for date: Date) {
         let dateString = formatDate(date)
@@ -177,93 +212,93 @@ class AuthViewModel: ObservableObject {
     }
 
     func fetchPatientAppointments() {
-            guard let uid = currentUser?.uid else { return }
-            
-            db.collection("appointments")
-                .whereField("patientId", isEqualTo: uid)
-                .addSnapshotListener { snapshot, error in
-                    if let error = error {
-                        print("❌ Error fetching: \(error.localizedDescription)")
-                        return
+        guard let uid = currentUser?.uid else { return }
+        
+        db.collection("appointments")
+            .whereField("patientId", isEqualTo: uid)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Error fetching: \(error.localizedDescription)")
+                    return
+                }
+                
+                let allAppts = snapshot?.documents.compactMap { doc in
+                    try? doc.data(as: Appointment.self)
+                } ?? []
+                
+                DispatchQueue.main.async {
+                    self.patientAppointments = allAppts.filter { appt in
+                        if appt.date < Calendar.current.startOfDay(for: Date()) {
+                            self.deleteExpiredAppointment(id: appt.id)
+                            return false
+                        }
+                        return true
                     }
                     
-                    let allAppts = snapshot?.documents.compactMap { doc in
-                        try? doc.data(as: Appointment.self)
-                    } ?? []
-                    
-                    DispatchQueue.main.async {
-                        self.patientAppointments = allAppts.filter { appt in
-                            if appt.date < Calendar.current.startOfDay(for: Date()) {
-                                self.deleteExpiredAppointment(id: appt.id)
-                                return false
-                            }
-                            return true
+                    // THE FIX: Two-step sorting logic applied to the Patient Dashboard!
+                    self.patientAppointments.sort { appt1, appt2 in
+                        // 1. Strip away the exact hours/minutes to compare just the calendar day
+                        let day1 = Calendar.current.startOfDay(for: appt1.date)
+                        let day2 = Calendar.current.startOfDay(for: appt2.date)
+                        
+                        if day1 == day2 {
+                            // 2. If it's the same day, sort by Serial Number
+                            return (appt1.serialNumber ?? 0) < (appt2.serialNumber ?? 0)
                         }
                         
-                        // THE FIX: Two-step sorting logic applied to the Patient Dashboard!
-                        self.patientAppointments.sort { appt1, appt2 in
-                            // 1. Strip away the exact hours/minutes to compare just the calendar day
-                            let day1 = Calendar.current.startOfDay(for: appt1.date)
-                            let day2 = Calendar.current.startOfDay(for: appt2.date)
-                            
-                            if day1 == day2 {
-                                // 2. If it's the same day, sort by Serial Number
-                                return (appt1.serialNumber ?? 0) < (appt2.serialNumber ?? 0)
-                            }
-                            
-                            // Otherwise, sort by the date
-                            return day1 < day2
-                        }
+                        // Otherwise, sort by the date
+                        return day1 < day2
                     }
                 }
-        }
+            }
+    }
 
     // MARK: - Appointment Logic (Booking & Canceling)
         
-        // UPDATED: Now includes a completion handler and duplicate checking
-        func scheduleAppointment(doctorId: String, doctorName: String, timeSlot: String, date: Date, notes: String, completion: @escaping (Bool, String) -> Void) {
-            guard let patientId = currentUser?.uid else { return }
-            let dateString = formatDate(date)
+    // UPDATED: Now includes a completion handler and duplicate checking
+    func scheduleAppointment(doctorId: String, doctorName: String, timeSlot: String, date: Date, notes: String, completion: @escaping (Bool, String) -> Void) {
+        guard let patientId = currentUser?.uid else { return }
+        let dateString = formatDate(date)
+        
+        // 1. PREVENT MULTIPLE APPOINTMENTS ON THE SAME DAY
+        let alreadyBooked = patientAppointments.contains { formatDate($0.date) == dateString }
+        if alreadyBooked {
+            completion(false, "You already have an appointment scheduled for \(dateString). Please choose another date.")
+            return
+        }
+        
+        let availabilityRef = db.collection("availability").document("\(doctorId)_\(dateString)")
+        
+        db.runTransaction({ (transaction, errorPointer) -> Any? in
+            let availDoc: DocumentSnapshot
+            do { try availDoc = transaction.getDocument(availabilityRef) }
+            catch { return nil }
             
-            // 1. PREVENT MULTIPLE APPOINTMENTS ON THE SAME DAY
-            let alreadyBooked = patientAppointments.contains { formatDate($0.date) == dateString }
-            if alreadyBooked {
-                completion(false, "You already have an appointment scheduled for \(dateString). Please choose another date.")
-                return
-            }
+            let currentCount = availDoc.data()?["currentPatientCount"] as? Int ?? 0
+            let newSerial = currentCount + 1 // This is their exact queue position
             
-            let availabilityRef = db.collection("availability").document("\(doctorId)_\(dateString)")
+            transaction.setData([
+                "doctorId": doctorId,
+                "date": dateString,
+                "currentPatientCount": newSerial
+            ], forDocument: availabilityRef, merge: true)
             
-            db.runTransaction({ (transaction, errorPointer) -> Any? in
-                let availDoc: DocumentSnapshot
-                do { try availDoc = transaction.getDocument(availabilityRef) }
-                catch { return nil }
+            return newSerial // Pass the serial number out of the transaction
+        }) { (object, error) in
+            if let error = error {
+                completion(false, "Booking failed: \(error.localizedDescription)")
+            } else if let serialNumber = object as? Int {
+                let emailPrefix = self.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Patient"
+                let finalPatientName = self.currentUser?.fullName ?? emailPrefix
                 
-                let currentCount = availDoc.data()?["currentPatientCount"] as? Int ?? 0
-                let newSerial = currentCount + 1 // This is their exact queue position
+                // Save the serial number into the new appointment
+                let newAppt = Appointment(patientId: patientId, patientName: finalPatientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes, serialNumber: serialNumber)
                 
-                transaction.setData([
-                    "doctorId": doctorId,
-                    "date": dateString,
-                    "currentPatientCount": newSerial
-                ], forDocument: availabilityRef, merge: true)
-                
-                return newSerial // Pass the serial number out of the transaction
-            }) { (object, error) in
-                if let error = error {
-                    completion(false, "Booking failed: \(error.localizedDescription)")
-                } else if let serialNumber = object as? Int {
-                    let emailPrefix = self.currentUser?.email.components(separatedBy: "@").first?.capitalized ?? "Patient"
-                    let finalPatientName = self.currentUser?.fullName ?? emailPrefix
-                    
-                    // Save the serial number into the new appointment
-                    let newAppt = Appointment(patientId: patientId, patientName: finalPatientName, doctorId: doctorId, doctorName: doctorName, timeSlot: timeSlot, date: date, status: "Scheduled", notes: notes, serialNumber: serialNumber)
-                    
-                    try? self.db.collection("appointments").addDocument(from: newAppt)
-                    completion(true, "Success")
-                }
+                try? self.db.collection("appointments").addDocument(from: newAppt)
+                completion(true, "Success")
             }
         }
+    }
     
     func cancelAppointment(appointment: Appointment) {
         guard let docId = appointment.id else { return }

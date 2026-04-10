@@ -27,4 +27,5 @@ struct MediUser: Codable, Identifiable, Hashable {
     var bloodGroup: String?
     var age: String?
     var weight: String?
+    var profileImageUrl: String?
 }
