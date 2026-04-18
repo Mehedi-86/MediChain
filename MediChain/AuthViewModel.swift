@@ -14,12 +14,20 @@ import Combine
 class AuthViewModel: ObservableObject {
     @Published var currentUser: MediUser?
     @Published var isSignedIn = false
+    @Published var isAdminSession = false
     @Published var appointments: [Appointment] = []
     @Published var availableDoctors: [MediUser] = []
     @Published var patientAppointments: [Appointment] = []
+    @Published var adminDoctors: [MediUser] = []
+    @Published var adminPatients: [MediUser] = []
+    @Published var adminAppointments: [Appointment] = []
+    @Published var breakingNews: [BreakingNewsItem] = []
+
+    private let adminEmail = "admin@gmail.com"
+    private let adminPassword = "123456"
     
     private var db = Firestore.firestore()
-    
+
     // MARK: - Authentication
     
     // UPDATED: Now requires fullName AND region during sign up
@@ -48,6 +56,22 @@ class AuthViewModel: ObservableObject {
     }
     
     func signIn(email: String, password: String) {
+        if email.lowercased() == adminEmail && password == adminPassword {
+            let adminUser = MediUser(
+                uid: "admin-local-account",
+                email: adminEmail,
+                fullName: "System Admin",
+                role: .admin
+            )
+
+            DispatchQueue.main.async {
+                self.currentUser = adminUser
+                self.isAdminSession = true
+                self.isSignedIn = true
+            }
+            return
+        }
+
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("❌ Login Error: \(error.localizedDescription)")
@@ -60,6 +84,7 @@ class AuthViewModel: ObservableObject {
                 if let data = snapshot?.data(), let roleString = data["role"] as? String {
                     DispatchQueue.main.async {
                         self.currentUser = try? snapshot?.data(as: MediUser.self)
+                        self.isAdminSession = roleString == UserRole.admin.rawValue
                         self.isSignedIn = true
                     }
                 }
@@ -338,6 +363,204 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
+
+    // MARK: - Admin Data
+
+    func fetchAdminDoctors() {
+        db.collection("users")
+            .whereField("role", isEqualTo: UserRole.doctor.rawValue)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Admin doctor fetch error: \(error.localizedDescription)")
+                    return
+                }
+
+                let doctors = snapshot?.documents.compactMap { try? $0.data(as: MediUser.self) } ?? []
+                DispatchQueue.main.async {
+                    self.adminDoctors = doctors.sorted {
+                        ($0.fullName ?? $0.email).localizedCaseInsensitiveCompare($1.fullName ?? $1.email) == .orderedAscending
+                    }
+                }
+            }
+    }
+
+    func fetchAdminPatients() {
+        db.collection("users")
+            .whereField("role", isEqualTo: UserRole.patient.rawValue)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Admin patient fetch error: \(error.localizedDescription)")
+                    return
+                }
+
+                let patients = snapshot?.documents.compactMap { try? $0.data(as: MediUser.self) } ?? []
+                DispatchQueue.main.async {
+                    self.adminPatients = patients.sorted {
+                        ($0.fullName ?? $0.email).localizedCaseInsensitiveCompare($1.fullName ?? $1.email) == .orderedAscending
+                    }
+                }
+            }
+    }
+
+    func fetchAdminAppointments() {
+        db.collection("appointments")
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Admin appointment fetch error: \(error.localizedDescription)")
+                    return
+                }
+
+                let appts = snapshot?.documents.compactMap { try? $0.data(as: Appointment.self) } ?? []
+                DispatchQueue.main.async {
+                    self.adminAppointments = appts.sorted { $0.date > $1.date }
+                }
+            }
+    }
+
+    func fetchBreakingNews() {
+        db.collection("breakingNews")
+            .order(by: "createdAt", descending: true)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Breaking news fetch error: \(error.localizedDescription)")
+                    return
+                }
+
+                let items = snapshot?.documents.compactMap { try? $0.data(as: BreakingNewsItem.self) } ?? []
+                DispatchQueue.main.async {
+                    self.breakingNews = items
+                }
+            }
+    }
+
+    func addBreakingNews(title: String, brief: String, article: String, completion: ((Bool) -> Void)? = nil) {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanBrief = brief.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanArticle = article.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanTitle.isEmpty, !cleanBrief.isEmpty, !cleanArticle.isEmpty else {
+            completion?(false)
+            return
+        }
+
+        let item = BreakingNewsItem(
+            title: cleanTitle,
+            brief: cleanBrief,
+            article: cleanArticle,
+            message: nil,
+            createdAt: Date()
+        )
+        do {
+            _ = try db.collection("breakingNews").addDocument(from: item)
+            completion?(true)
+        } catch {
+            print("❌ Add breaking news error: \(error.localizedDescription)")
+            completion?(false)
+        }
+    }
+
+    func deleteBreakingNews(item: BreakingNewsItem, completion: ((Bool) -> Void)? = nil) {
+        guard let id = item.id else {
+            completion?(false)
+            return
+        }
+
+        db.collection("breakingNews").document(id).delete { error in
+            if let error = error {
+                print("❌ Delete breaking news error: \(error.localizedDescription)")
+                completion?(false)
+            } else {
+                completion?(true)
+            }
+        }
+    }
+
+    func deleteUserRegistration(user: MediUser, completion: ((Bool) -> Void)? = nil) {
+        guard user.role != .admin else {
+            completion?(false)
+            return
+        }
+
+        let group = DispatchGroup()
+        var hadError = false
+        let lock = NSLock()
+
+        group.enter()
+        db.collection("users").document(user.uid).delete { error in
+            if let error = error {
+                print("❌ User doc delete error: \(error.localizedDescription)")
+                lock.lock()
+                hadError = true
+                lock.unlock()
+            }
+            group.leave()
+        }
+
+        if user.role == .doctor {
+            group.enter()
+            deleteDocuments(in: db.collection("appointments").whereField("doctorId", isEqualTo: user.uid)) { success in
+                if !success {
+                    lock.lock()
+                    hadError = true
+                    lock.unlock()
+                }
+                group.leave()
+            }
+
+            group.enter()
+            deleteDocuments(in: db.collection("availability").whereField("doctorId", isEqualTo: user.uid)) { success in
+                if !success {
+                    lock.lock()
+                    hadError = true
+                    lock.unlock()
+                }
+                group.leave()
+            }
+        }
+
+        if user.role == .patient {
+            group.enter()
+            deleteDocuments(in: db.collection("appointments").whereField("patientId", isEqualTo: user.uid)) { success in
+                if !success {
+                    lock.lock()
+                    hadError = true
+                    lock.unlock()
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            completion?(!hadError)
+        }
+    }
+
+    private func deleteDocuments(in query: Query, completion: @escaping (Bool) -> Void) {
+        query.getDocuments { snapshot, error in
+            if let error = error {
+                print("❌ Query delete fetch error: \(error.localizedDescription)")
+                completion(false)
+                return
+            }
+
+            guard let docs = snapshot?.documents, !docs.isEmpty else {
+                completion(true)
+                return
+            }
+
+            let batch = self.db.batch()
+            docs.forEach { batch.deleteDocument($0.reference) }
+
+            batch.commit { error in
+                if let error = error {
+                    print("❌ Batch delete commit error: \(error.localizedDescription)")
+                    completion(false)
+                } else {
+                    completion(true)
+                }
+            }
+        }
+    }
     
     // MARK: - Helpers
     
@@ -351,10 +574,14 @@ class AuthViewModel: ObservableObject {
         try? Auth.auth().signOut()
         DispatchQueue.main.async {
             self.isSignedIn = false
+            self.isAdminSession = false
             self.currentUser = nil
             self.appointments = []
             self.availableDoctors = []
             self.patientAppointments = []
+            self.adminDoctors = []
+            self.adminPatients = []
+            self.adminAppointments = []
         }
     }
 }
