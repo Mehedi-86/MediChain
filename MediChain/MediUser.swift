@@ -8,6 +8,7 @@
 import Foundation
 
 enum UserRole: String, Codable {
+    case admin = "Admin"
     case doctor = "Doctor"
     case patient = "Patient"
 }

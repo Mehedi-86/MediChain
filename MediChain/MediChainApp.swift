@@ -22,7 +22,9 @@ struct MediChainApp: App {
         WindowGroup {
             Group {
                 if authViewModel.isSignedIn {
-                    if authViewModel.currentUser?.role == .doctor {
+                    if authViewModel.isAdminSession || authViewModel.currentUser?.role == .admin {
+                        AdminDashboardView()
+                    } else if authViewModel.currentUser?.role == .doctor {
                         DoctorDashboardView()
                     } else {
                         PatientDashboardView()

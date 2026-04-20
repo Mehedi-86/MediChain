@@ -16,6 +16,7 @@ struct LoginView: View {
     @State private var region = "" // NEW: Region state variable
     @State private var isLoginMode = true
     @State private var selectedRole: UserRole = .patient
+    @State private var showBreakingNews = false
     
     // Form Validation Logic Updated to include Region for Doctors
     var isFormValid: Bool {
@@ -126,11 +127,31 @@ struct LoginView: View {
                     .disabled(!isFormValid) // Prevents clicking if fields are empty
                     .padding(.horizontal)
                     .padding(.top, 10)
+
+                    Button(action: {
+                        showBreakingNews = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "newspaper")
+                            Text("Breaking Information")
+                                .fontWeight(.semibold)
+                        }
+                        .font(.footnote)
+                        .foregroundColor(.blue)
+                        .padding(.top, 6)
+                    }
                     
                     Spacer()
                 }
                 .animation(.easeInOut, value: isLoginMode) // Animates the layout changes for Login vs Create
             }
+        }
+        .sheet(isPresented: $showBreakingNews) {
+            BreakingNewsFeedView()
+                .environmentObject(authViewModel)
+        }
+        .onAppear {
+            authViewModel.fetchBreakingNews()
         }
     }
 }

@@ -7,6 +7,12 @@
 
 import SwiftUI
 
+private struct FDASearchResult: Identifiable {
+    let id = UUID()
+    let medicineName: String
+    let details: FDADrugDetail
+}
+
 struct PrescriptionScannerView: View {
     @State private var isShowingScanner = false
     @State private var scannedImages: [UIImage] = []
@@ -21,6 +27,10 @@ struct PrescriptionScannerView: View {
     @State private var fdaDetails: FDADrugDetail?
     @State private var isFetchingFDA = false
     @State private var searchedMedicineName: String = "" // Added this to hold the dynamic name!
+    @State private var fdaSearchResults: [FDASearchResult] = []
+    @State private var manualMedicineSearch: String = ""
+    @State private var isManualFDASearching = false
+    @State private var manualFDASearchError: String?
     
     // NEW: Healthfinder State Variables
     @State private var extractedDiagnosis: String = ""
@@ -198,11 +208,83 @@ struct PrescriptionScannerView: View {
                                 ProgressView("Fetching official FDA data...")
                                     .padding()
                             }
-                        } else if let details = fdaDetails {
-                            FDAInfoCard(drugDetails: details, medicineName: searchedMedicineName)
+                        } else if !fdaSearchResults.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Official FDA Information")
+                                    .font(.headline)
+                                    .padding(.horizontal, 28)
+
+                                ForEach(fdaSearchResults) { result in
+                                    FDAInfoCard(drugDetails: result.details, medicineName: result.medicineName)
+                                        .padding(.horizontal, 24)
+                                }
+                            }
+                            .padding(.top, 16)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
+                        // MARK: - Optional Manual Medicine Search
+                        if !extractedText.isEmpty && !isProcessing {
+                            VStack(spacing: 12) {
+                                Text("Search Any Medicine (Optional)")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 28)
+
+                                HStack {
+                                    Image(systemName: "pills.fill")
+                                        .foregroundColor(.gray)
+                                    TextField("Enter medicine name (e.g., Paracetamol)", text: $manualMedicineSearch)
+                                        .font(.body)
+
+                                    if !manualMedicineSearch.isEmpty {
+                                        Button(action: { manualMedicineSearch = "" }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.gray.opacity(0.5))
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(Color(UIColor.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                                )
                                 .padding(.horizontal, 24)
-                                .padding(.top, 16)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
+
+                                Button(action: {
+                                    Task { await searchManualMedicineFDA() }
+                                }) {
+                                    HStack {
+                                        if isManualFDASearching {
+                                            ProgressView()
+                                                .tint(.white)
+                                        }
+                                        Image(systemName: "cross.case.fill")
+                                        Text("Search FDA for This Medicine")
+                                            .fontWeight(.bold)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(manualMedicineSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isManualFDASearching ? Color.gray : Color.blue)
+                                    .foregroundColor(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                }
+                                .disabled(manualMedicineSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isManualFDASearching)
+                                .padding(.horizontal, 24)
+
+                                if let error = manualFDASearchError {
+                                    Text(error)
+                                        .font(.footnote)
+                                        .foregroundColor(.red)
+                                        .padding(.horizontal, 28)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .padding(.top, 8)
                         }
                         
                         // MARK: - Healthfinder Search Box & Button
@@ -343,6 +425,10 @@ struct PrescriptionScannerView: View {
             isProcessing = true
             extractedText = ""
             fdaDetails = nil // Reset the FDA card when a new scan starts
+            fdaSearchResults = []
+            searchedMedicineName = ""
+            manualMedicineSearch = ""
+            manualFDASearchError = nil
             extractedDiagnosis = "" // Reset diagnosis when new scan starts
             manualSearchKeyword = "" // Reset manual search when new scan starts
             pdfURL = nil // Reset the PDF url so it doesn't share the old one
@@ -363,6 +449,9 @@ struct PrescriptionScannerView: View {
             withAnimation(.spring()) {
                 isCleaningText = true
                 fdaDetails = nil // Clear old FDA data just in case
+                fdaSearchResults = []
+                searchedMedicineName = ""
+                manualFDASearchError = nil
                 extractedDiagnosis = "" // Clear old diagnosis data
                 manualSearchKeyword = "" // Clear old keyword
                 pdfURL = nil // Clear old PDF
@@ -384,21 +473,9 @@ struct PrescriptionScannerView: View {
             // Extract Medicine and Fetch FDA Data
             await MainActor.run { isFetchingFDA = true }
             
-            // Find the medicine name and diagnosis from Gemini's output
-            var medicineToSearch: String? = nil
+            // Find medicine names and diagnosis from Gemini's output
             let lines = cleanData.components(separatedBy: .newlines)
-            
-            // Look for our specific "Main Drug" line
-            if let drugLine = lines.first(where: { $0.contains("Main Drug:") }) {
-                let extractedDrug = drugLine.replacingOccurrences(of: "🔍 Main Drug:", with: "")
-                                            .replacingOccurrences(of: "Main Drug:", with: "")
-                                            .trimmingCharacters(in: .whitespacesAndNewlines)
-                
-                // If the AI didn't write NONE, we search for the drug!
-                if !extractedDrug.lowercased().contains("none") && !extractedDrug.isEmpty {
-                    medicineToSearch = extractedDrug
-                }
-            }
+            let medicineCandidates = extractMedicineCandidates(from: lines)
             
             // Look for our specific "Diagnosis" line
             if let diagnosisLine = lines.first(where: { $0.contains("Diagnosis:") }) {
@@ -420,20 +497,16 @@ struct PrescriptionScannerView: View {
                 }
             }
             
-            // Fetch the data ONLY if we found a valid medicine
-            var fetchedDetails: FDADrugDetail? = nil
-            var searchedName = ""
-            
-            if let targetMed = medicineToSearch {
-                fetchedDetails = try? await OpenFDAService.shared.fetchDrugDetails(for: targetMed)
-                searchedName = targetMed
-            }
-            
-            // Update the UI with the correct dynamic name!
+            // Fetch FDA data for all extracted medicine candidates
+            let fetchedResults = await fetchFDADetailsForMedicines(medicineCandidates)
+
+            let primaryResult = fetchedResults.first
+
             await MainActor.run {
                 withAnimation(.spring()) {
-                    self.fdaDetails = fetchedDetails
-                    self.searchedMedicineName = searchedName.capitalized // Store the name for the UI card
+                    self.fdaSearchResults = fetchedResults
+                    self.fdaDetails = primaryResult?.details
+                    self.searchedMedicineName = primaryResult?.medicineName.capitalized ?? ""
                     self.isFetchingFDA = false
                 }
             }
@@ -455,6 +528,126 @@ struct PrescriptionScannerView: View {
                     isFetchingFDA = false
                 }
             }
+        }
+    }
+
+    private func extractMedicineCandidates(from lines: [String]) -> [String] {
+        var candidates: [String] = []
+
+        func appendCandidates(from rawText: String) {
+            let lineWithoutLeadingBullet = rawText
+                .replacingOccurrences(of: "^[\\-•–]+\\s*", with: "", options: .regularExpression)
+
+            let cleaned = lineWithoutLeadingBullet
+                .replacingOccurrences(of: "💊", with: "")
+                .replacingOccurrences(of: "Medications:", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: " and ", with: ",", options: .caseInsensitive)
+                .replacingOccurrences(of: ";", with: ",")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !cleaned.isEmpty else { return }
+
+            let parts = cleaned
+                .components(separatedBy: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            candidates.append(contentsOf: parts)
+        }
+
+        if let medicationsIndex = lines.firstIndex(where: { $0.localizedCaseInsensitiveContains("Medications:") }) {
+            // Parse the labeled medications line first.
+            appendCandidates(from: lines[medicationsIndex])
+
+            // Then parse following bullet/continuation lines until next major section heading.
+            let stopKeywords = ["main drug:", "diagnosis:", "doctor:", "date:"]
+            var index = medicationsIndex + 1
+            while index < lines.count {
+                let rawLine = lines[index].trimmingCharacters(in: .whitespacesAndNewlines)
+                let lowerLine = rawLine.lowercased()
+
+                if rawLine.isEmpty {
+                    index += 1
+                    continue
+                }
+
+                if stopKeywords.contains(where: { lowerLine.contains($0) }) {
+                    break
+                }
+
+                // Include bullet style rows or wrapped continuation rows.
+                let isMedicationLike = rawLine.hasPrefix("-") || rawLine.hasPrefix("•") || rawLine.hasPrefix("–") || !rawLine.contains(":")
+                if isMedicationLike {
+                    appendCandidates(from: rawLine)
+                }
+
+                index += 1
+            }
+        }
+
+        if let mainDrugLine = lines.first(where: { $0.localizedCaseInsensitiveContains("Main Drug:") }) {
+            let main = mainDrugLine
+                .replacingOccurrences(of: "🔍 Main Drug:", with: "")
+                .replacingOccurrences(of: "Main Drug:", with: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if !main.lowercased().contains("none") && !main.isEmpty {
+                candidates.insert(main, at: 0)
+            }
+        }
+
+        var seen = Set<String>()
+        let deduped = candidates.filter {
+            let cleaned = $0
+                .replacingOccurrences(of: "\\(.*?\\)", with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = cleaned.lowercased()
+            guard !key.isEmpty, !key.contains("none"), !seen.contains(key) else { return false }
+            seen.insert(key)
+            return true
+        }
+
+        return Array(deduped.prefix(6))
+    }
+
+    private func fetchFDADetailsForMedicines(_ names: [String]) async -> [FDASearchResult] {
+        guard !names.isEmpty else { return [] }
+
+        var results: [FDASearchResult] = []
+        for name in names {
+            if let details = try? await OpenFDAService.shared.fetchDrugDetails(for: name) {
+                results.append(FDASearchResult(medicineName: name, details: details))
+            }
+        }
+        return results
+    }
+
+    private func searchManualMedicineFDA() async {
+        let query = manualMedicineSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+
+        await MainActor.run {
+            isManualFDASearching = true
+            manualFDASearchError = nil
+        }
+
+        let details = try? await OpenFDAService.shared.fetchDrugDetails(for: query)
+
+        await MainActor.run {
+            if let details {
+                let exists = fdaSearchResults.contains { $0.medicineName.lowercased() == query.lowercased() }
+                if !exists {
+                    fdaSearchResults.insert(FDASearchResult(medicineName: query, details: details), at: 0)
+                }
+
+                fdaDetails = fdaSearchResults.first?.details
+                searchedMedicineName = fdaSearchResults.first?.medicineName ?? ""
+                manualMedicineSearch = ""
+            } else {
+                manualFDASearchError = "No official FDA result found for '\(query)'."
+            }
+
+            isManualFDASearching = false
         }
     }
 }
