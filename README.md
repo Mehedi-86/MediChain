@@ -20,10 +20,9 @@
 12. [File Structure](#file-structure)
 13. [Setup & Installation](#setup--installation)
 14. [Build Configuration](#build-configuration)
-15. [Testing Notes](#testing-notes)
-16. [Known Limitations & Future Work](#known-limitations--future-work)
-17. [Screenshots Reference](#screenshots-reference)
-
+15. [App UI Gallery](#-app-ui-gallery)
+16. [Testing Notes](#testing-notes)
+17. [Known Limitations & Future Work](#known-limitations--future-work)
 ---
 
 ## 📌 Project Overview
@@ -639,6 +638,88 @@ Select your target device or simulator and press **⌘R**.
 
 ---
 
+
+## 📸 App UI Gallery
+
+<table align="center">
+  <tr>
+    <td align="center"><b>Login Page</b></td>
+    <td align="center"><b>Patient Dashboard</b></td>
+    <td align="center"><b>Smart Scanner</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/e7c969ce-6e4a-4778-97e1-3c48108700dd" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/dbd2f56e-0cdc-4205-8e71-4c247bbce630" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/d6316459-cf65-4c43-bc10-126e8c8e8011" width="300"/></td>
+  </tr>
+  
+  <tr>
+    <td align="center"><b>Scanning Prescription</b></td>
+    <td align="center"><b>API Module</b></td>
+    <td align="center"><b>Medical Records</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/10383a21-1bc3-4c9e-bd43-21de8234d4d7" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/e8429dc6-67ab-4f1d-99f5-4aeb75830121" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/cf51efcd-6b1b-432f-b862-86138ddea6f2" width="300"/></td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Digital Scanner</b></td>
+    <td align="center"><b>Info Section</b></td>
+    <td align="center"><b>Appointment Request Page</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/6030f0b4-4e85-4762-b26d-ce2c4ce5b74b" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/8e6deb4e-67a3-4949-a818-0c8773b84f48" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/52ec53a9-046a-453f-bff1-0eee6ca46160" width="300"/></td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Take an Appointment</b></td>
+    <td align="center"><b>SignUp Page</b></td>
+    <td align="center"><b>Breaking Info Page</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/627cd29c-a692-4240-b93e-95bec8d599c4" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/f8f6dc41-08e7-455c-baba-5e9497e2817d" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/b26448d4-6ab1-462a-98da-c428f4ea960c" width="300"/></td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Article of disease</b></td>
+    <td align="center"><b>Doctor Dashboard</b></td>
+    <td align="center"><b>Doctor visiting Patient Profile</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/a8636f70-31a5-4838-aaaf-1817c5fbe553" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/c1f3fd2b-dcb1-4aa0-9575-502d4d65c5cc" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/9638076c-ffcd-4e0e-bb08-0ae34a1f3016" width="300"/></td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Doctor can suggest Prescription and see Tests Report</b></td>
+    <td align="center"><b>Admin Dashboard</b></td>
+    <td align="center"><b>Admin can see Doctor's list</b></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/76dace44-dbf7-4325-8340-689589ed58a4" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/ce2aaed0-2b7d-49c3-a16f-f4f8682797a4" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/76fe86f1-450b-46db-b03c-826ba6501bbd" width="300"/></td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Admin can see Patient's list</b></td>
+    <td align="center"><b>Breaking Info Page</b></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/aaf3ef7a-c984-4b69-8f33-066e07d5715c" width="300"/></td>
+    <td><img src="https://github.com/user-attachments/assets/da335d6c-3ac0-4480-9f21-0850aba694d9" width="300"/></td>
+    <td></td>
+  </tr>
+</table>
+
 ## 🧪 Testing Notes
 
 | Scenario | Expected Behavior |
@@ -673,21 +754,6 @@ Select your target device or simulator and press **⌘R**.
 - End-to-end encryption for sensitive medical documents
 - Apple HealthKit integration for real-time vitals monitoring
 - Biometric login (`Face ID` / `Touch ID`) via `LocalAuthentication`
-
----
-
-## 📸 Screenshots Reference
-
-| Screen | Description |
-|---|---|
-| Login Screen | Segmented login/signup with animated region field for doctors |
-| Patient Dashboard | Profile header with QR button, action tiles, paginated appointment feed |
-| Booking View | Date picker → region filter → doctor picker pipeline |
-| Scanner View | Camera → OCR text card → Gemini clean button → FDA cards |
-| Doctor Dashboard | Duty settings, date-paginated patient queue with serial numbers |
-| Patient Detail | Medical metrics view (email hidden for privacy) |
-| Admin Console | NavigationSplitView with doctors, patients, and news panels |
-| Breaking News Feed | Color-themed alert cards → formatted article reader |
 
 ---
 
