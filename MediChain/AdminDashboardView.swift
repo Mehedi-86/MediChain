@@ -83,6 +83,34 @@ struct AdminDashboardView: View {
                         Text("Manage users and public alerts")
                             .font(.footnote)
                             .foregroundColor(.white.opacity(0.78))
+
+                        HStack(spacing: 10) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "stethoscope")
+                                    .font(.caption2)
+                                Text("\(authViewModel.adminDoctors.count) Doctors")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(.teal)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.teal.opacity(0.18))
+                            .clipShape(Capsule())
+
+                            HStack(spacing: 5) {
+                                Image(systemName: "person.3")
+                                    .font(.caption2)
+                                Text("\(authViewModel.adminPatients.count) Patients")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(Color(red: 0.52, green: 0.82, blue: 0.94))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.cyan.opacity(0.18))
+                            .clipShape(Capsule())
+                        }
                     }
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -310,6 +338,7 @@ struct AdminDashboardView: View {
                 } else {
                     LazyVStack(spacing: 12) {
                         ForEach(filteredDoctors, id: \.uid) { doctor in
+                            let doctorAppointmentCount = authViewModel.adminAppointments.filter { $0.doctorId == doctor.uid }.count
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
@@ -321,12 +350,27 @@ struct AdminDashboardView: View {
                                     }
                                     Spacer()
 
-                                    Button(role: .destructive) {
-                                        selectedUserForDeletion = doctor
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    if doctorAppointmentCount > 0 {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "lock.fill")
+                                                .font(.caption2)
+                                            Text("\(doctorAppointmentCount) appt")
+                                                .font(.caption2)
+                                                .fontWeight(.semibold)
+                                        }
+                                        .foregroundColor(.orange)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(Color.orange.opacity(0.12))
+                                        .clipShape(Capsule())
+                                    } else {
+                                        Button(role: .destructive) {
+                                            selectedUserForDeletion = doctor
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .buttonStyle(.bordered)
                                     }
-                                    .buttonStyle(.bordered)
                                 }
 
                                 HStack(spacing: 8) {
@@ -382,12 +426,27 @@ struct AdminDashboardView: View {
                                     }
                                     Spacer()
 
-                                    Button(role: .destructive) {
-                                        selectedUserForDeletion = patient
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    if appointments.count > 0 {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "lock.fill")
+                                                .font(.caption2)
+                                            Text("\(appointments.count) appt")
+                                                .font(.caption2)
+                                                .fontWeight(.semibold)
+                                        }
+                                        .foregroundColor(.orange)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(Color.orange.opacity(0.12))
+                                        .clipShape(Capsule())
+                                    } else {
+                                        Button(role: .destructive) {
+                                            selectedUserForDeletion = patient
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .buttonStyle(.bordered)
                                     }
-                                    .buttonStyle(.bordered)
                                 }
 
                                 if uniqueDoctors.isEmpty {
