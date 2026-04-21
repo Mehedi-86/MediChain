@@ -6,24 +6,23 @@
 
 ## 📋 Table of Contents
 
-1. [Project Overview](#project-overview)
-2. [Team & Roles](#team--roles)
-3. [Tech Stack](#tech-stack)
-4. [System Architecture](#system-architecture)
-5. [Features & Modules](#features--modules)
-6. [Data Models](#data-models)
-7. [Firebase Database Structure](#firebase-database-structure)
-8. [Authentication & Authorization](#authentication--authorization)
-9. [AI & External API Integrations](#ai--external-api-integrations)
-10. [UI/UX Design Decisions](#uiux-design-decisions)
-11. [Core Algorithms & Business Logic](#core-algorithms--business-logic)
-12. [File Structure](#file-structure)
-13. [Setup & Installation](#setup--installation)
-14. [Build Configuration](#build-configuration)
+1. [Project Overview](#-project-overview)
+2. [Team & Roles](#-team--roles)
+3. [Tech Stack](#-tech-stack)
+4. [System Architecture](#-system-architecture)
+5. [Features & Modules](#-features--modules)
+6. [Data Models](#-data-models)
+7. [Firebase Database Structure](#-firebase-database-structure)
+8. [Authentication & Authorization](#-authentication--authorization)
+9. [AI & External API Integrations](#-ai--external-api-integrations)
+10. [UI/UX Design Decisions](#-uiux-design-decisions)
+11. [Core Algorithms & Business Logic](#-core-algorithms--business-logic)
+12. [File Structure](#-file-structure)
+13. [Setup & Installation](#-setup--installation)
+14. [Build Configuration](#-build-configuration)
 15. [App UI Gallery](#-app-ui-gallery)
-16. [Testing Notes](#testing-notes)
-17. [Known Limitations & Future Work](#known-limitations--future-work)
----
+16. [Testing Notes](#-testing-notes)
+17. [Known Limitations & Future Work](#-known-limitations--future-work)
 
 ## 📌 Project Overview
 
