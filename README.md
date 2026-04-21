@@ -642,9 +642,9 @@ Select your target device or simulator and press **⌘R**.
 
 <table align="center">
   <tr>
-    <td align="center"><b>Login Page</b></td>
-    <td align="center"><b>Patient Dashboard</b></td>
-    <td align="center"><b>Smart Scanner</b></td>
+    <td align="center" width="33%"><b>Login Page</b></td>
+    <td align="center" width="33%"><b>Patient Dashboard</b></td>
+    <td align="center" width="33%"><b>Smart Scanner</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/e7c969ce-6e4a-4778-97e1-3c48108700dd" width="250" height="520"/></td>
@@ -653,9 +653,9 @@ Select your target device or simulator and press **⌘R**.
   </tr>
   
   <tr>
-    <td align="center"><b>Scanning Prescription</b></td>
-    <td align="center"><b>API Module</b></td>
-    <td align="center"><b>Medical Records</b></td>
+    <td align="center" width="33%"><b>Scanning Prescription</b></td>
+    <td align="center" width="33%"><b>API Module</b></td>
+    <td align="center" width="33%"><b>Medical Records</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/10383a21-1bc3-4c9e-bd43-21de8234d4d7" width="250" height="520"/></td>
@@ -664,9 +664,9 @@ Select your target device or simulator and press **⌘R**.
   </tr>
 
   <tr>
-    <td align="center"><b>Digital Scanner</b></td>
-    <td align="center"><b>Info Section</b></td>
-    <td align="center"><b>Appointment Request Page</b></td>
+    <td align="center" width="33%"><b>Digital Scanner</b></td>
+    <td align="center" width="33%"><b>Info Section</b></td>
+    <td align="center" width="33%"><b>Appointment Request Page</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/6030f0b4-4e85-4762-b26d-ce2c4ce5b74b" width="250" height="520"/></td>
@@ -675,9 +675,9 @@ Select your target device or simulator and press **⌘R**.
   </tr>
 
   <tr>
-    <td align="center"><b>Take an Appointment</b></td>
-    <td align="center"><b>SignUp Page</b></td>
-    <td align="center"><b>Breaking Info Page</b></td>
+    <td align="center" width="33%"><b>Take an Appointment</b></td>
+    <td align="center" width="33%"><b>SignUp Page</b></td>
+    <td align="center" width="33%"><b>Breaking Info Page</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/627cd29c-a692-4240-b93e-95bec8d599c4" width="250" height="520"/></td>
@@ -686,9 +686,9 @@ Select your target device or simulator and press **⌘R**.
   </tr>
 
   <tr>
-    <td align="center"><b>Article of disease</b></td>
-    <td align="center"><b>Doctor Dashboard</b></td>
-    <td align="center"><b>Doctor visiting Patient Profile</b></td>
+    <td align="center" width="33%"><b>Article of disease</b></td>
+    <td align="center" width="33%"><b>Doctor Dashboard</b></td>
+    <td align="center" width="33%"><b>Doctor visiting Patient Profile</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/a8636f70-31a5-4838-aaaf-1817c5fbe553" width="250" height="520"/></td>
@@ -697,9 +697,9 @@ Select your target device or simulator and press **⌘R**.
   </tr>
 
   <tr>
-    <td align="center"><b>Doctor can suggest Prescription and see Tests Report</b></td>
-    <td align="center"><b>Admin Dashboard</b></td>
-    <td align="center"><b>Admin can see Doctor's list</b></td>
+    <td align="center" width="33%"><b>Doctor can suggest Prescription and see Tests Report</b></td>
+    <td align="center" width="33%"><b>Admin Dashboard</b></td>
+    <td align="center" width="33%"><b>Admin can see Doctor's list</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/76dace44-dbf7-4325-8340-689589ed58a4" width="250" height="520"/></td>
@@ -708,9 +708,9 @@ Select your target device or simulator and press **⌘R**.
   </tr>
 
   <tr>
-    <td align="center"><b>Admin can see Patient's list</b></td>
-    <td align="center"><b>Breaking Info Page</b></td>
-    <td></td>
+    <td align="center" width="33%"><b>Admin can see Patient's list</b></td>
+    <td align="center" width="33%"><b>Breaking Info Page</b></td>
+    <td align="center" width="33%"></td>
   </tr>
   <tr>
     <td align="center"><img src="https://github.com/user-attachments/assets/aaf3ef7a-c984-4b69-8f33-066e07d5715c" width="250" height="520"/></td>
