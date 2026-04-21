@@ -1,9 +1,5 @@
-//
-//  AppointmentModels.swift
-//  MediChain
-//
-//  Created by mehedi hasan on 3/3/26.
-//
+// AppointmentModels.swift
+// MediChain
 
 import Foundation
 import FirebaseFirestore
@@ -18,7 +14,7 @@ struct DoctorAvailability: Codable {
 struct Appointment: Codable, Identifiable {
     @DocumentID var id: String?
     let patientId: String
-    var patientName: String? // --- NEW FIELD ---
+    var patientName: String?
     let doctorId: String
     var doctorName: String?
     var timeSlot: String?
@@ -26,4 +22,5 @@ struct Appointment: Codable, Identifiable {
     let status: String
     let notes: String
     var serialNumber: Int?
+    var prescriptionId: String?   // NEW: links to a doctor-written PatientPrescription
 }
